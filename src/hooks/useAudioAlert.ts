@@ -6,6 +6,17 @@ const CHIME_URL = "/sounds/chime.mp3";
 
 export type AlertKind = "interval" | "timerComplete";
 
+export type PlayAlertOptions = {
+  /** Short tones played at each interval boundary (1 = single ping). */
+  intervalRepeats?: number;
+  /** Linear output multiplier 0–1. */
+  intervalVolume?: number;
+};
+
+const DEFAULT_INTERVAL_REPEATS = 5;
+const DEFAULT_INTERVAL_VOLUME = 0.85;
+const INTERVAL_BASE_PEAK = 0.38;
+
 let sharedCtx: AudioContext | null = null;
 let chimeBuffer: AudioBuffer | null = null;
 let chimeLoadPromise: Promise<AudioBuffer | null> | null = null;
@@ -33,6 +44,31 @@ function attachUnlockListeners() {
   };
   window.addEventListener("pointerdown", unlock, { capture: true, passive: true });
   window.addEventListener("keydown", unlock, { capture: true, passive: true });
+}
+
+async function ensureAudioRunning(ctx: AudioContext): Promise<void> {
+  if (ctx.state === "closed") return;
+  try {
+    if (ctx.state !== "running") {
+      await ctx.resume().catch(() => {});
+    }
+    if (ctx.state !== "running") {
+      await new Promise<void>((r) => setTimeout(r, 70));
+      await ctx.resume().catch(() => {});
+    }
+  } catch {
+    //
+  }
+}
+
+function clampIntervalRepeats(n: number): number {
+  if (!Number.isFinite(n)) return DEFAULT_INTERVAL_REPEATS;
+  return Math.max(1, Math.min(12, Math.round(n)));
+}
+
+function clampUnitVolume(v: number): number {
+  if (!Number.isFinite(v)) return DEFAULT_INTERVAL_VOLUME;
+  return Math.max(0, Math.min(1, v));
 }
 
 async function loadChimeBuffer(ctx: AudioContext): Promise<AudioBuffer | null> {
@@ -70,13 +106,21 @@ function ping(ctx: AudioContext, when: number, durationSec: number, freq: number
   osc.stop(t1 + 0.02);
 }
 
-/** Five quick chimes in a row (interval ring end). */
-function playIntervalCluster(ctx: AudioContext, t0: number): void {
+/** Short chimes in a row (each interval segment end). */
+function playIntervalCluster(
+  ctx: AudioContext,
+  t0: number,
+  repeats: number,
+  volumeLinear: number
+): void {
   const beep = 0.1;
   const gap = 0.11;
   const freq = 905;
-  for (let k = 0; k < 5; k++) {
-    ping(ctx, t0 + k * (beep + gap), beep, freq, 0.21);
+  const peak = INTERVAL_BASE_PEAK * volumeLinear;
+  if (peak < 0.0005) return;
+  const n = clampIntervalRepeats(repeats);
+  for (let k = 0; k < n; k++) {
+    ping(ctx, t0 + k * (beep + gap), beep, freq, peak);
   }
 }
 
@@ -100,18 +144,27 @@ function playTimerCompleteChime(ctx: AudioContext, t0: number): void {
   ping(ctx, t0 + dur + 0.02, 0.16, 480, 0.15);
 }
 
-async function playAlertAsync(kind: AlertKind): Promise<void> {
+async function playAlertAsync(kind: AlertKind, opts?: PlayAlertOptions): Promise<void> {
   attachUnlockListeners();
+  const intervalRepeats = clampIntervalRepeats(opts?.intervalRepeats ?? DEFAULT_INTERVAL_REPEATS);
+  const intervalVol = clampUnitVolume(opts?.intervalVolume ?? DEFAULT_INTERVAL_VOLUME);
+
   try {
     const ctx = getAudioContext();
-    if (ctx.state === "suspended") await ctx.resume().catch(() => {});
+    await ensureAudioRunning(ctx);
 
     if (kind === "interval") {
+      if (intervalVol < 0.003) return;
+
+      /** Load sample first, then schedule from a single time base so spacing stays even. */
       const buf = await loadChimeBuffer(ctx);
+      await ensureAudioRunning(ctx);
+      const tBase = ctx.currentTime;
+
       if (buf && buf.duration > 0 && buf.duration < 0.4) {
         const step = buf.duration + 0.09;
-        const tBase = ctx.currentTime;
-        for (let k = 0; k < 5; k++) {
+        const samplePeak = Math.min(0.92, 0.52 * intervalVol);
+        for (let k = 0; k < intervalRepeats; k++) {
           const src = ctx.createBufferSource();
           const gain = ctx.createGain();
           src.buffer = buf;
@@ -119,13 +172,13 @@ async function playAlertAsync(kind: AlertKind): Promise<void> {
           gain.connect(ctx.destination);
           const when = tBase + k * step;
           gain.gain.setValueAtTime(0.0001, when);
-          gain.gain.linearRampToValueAtTime(0.42, when + 0.02);
+          gain.gain.linearRampToValueAtTime(samplePeak, when + 0.02);
           gain.gain.exponentialRampToValueAtTime(0.0001, when + buf.duration);
           src.start(when);
         }
         return;
       }
-      playIntervalCluster(ctx, ctx.currentTime);
+      playIntervalCluster(ctx, tBase, intervalRepeats, intervalVol);
       return;
     }
 
@@ -133,9 +186,12 @@ async function playAlertAsync(kind: AlertKind): Promise<void> {
   } catch {
     try {
       const ctx = getAudioContext();
-      if (ctx.state === "suspended") await ctx.resume().catch(() => {});
-      if (kind === "interval") playIntervalCluster(ctx, ctx.currentTime);
-      else playTimerCompleteChime(ctx, ctx.currentTime);
+      await ensureAudioRunning(ctx);
+      const t0 = ctx.currentTime;
+      if (kind === "interval") {
+        if (intervalVol < 0.003) return;
+        playIntervalCluster(ctx, t0, intervalRepeats, intervalVol);
+      } else playTimerCompleteChime(ctx, t0);
     } catch {
       //
     }
@@ -155,9 +211,21 @@ export function primeAudioFromUserGesture(): void {
   }
 }
 
-export function useAudioAlert(): (kind: AlertKind) => void {
+export function useAudioAlert(): (kind: AlertKind, opts?: PlayAlertOptions) => void {
   useEffect(() => {
     attachUnlockListeners();
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void (async () => {
+        try {
+          const ctx = getAudioContext();
+          await ensureAudioRunning(ctx);
+        } catch {
+          //
+        }
+      })();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     void (async () => {
       try {
         const ctx = getAudioContext();
@@ -166,9 +234,10 @@ export function useAudioAlert(): (kind: AlertKind) => void {
         //
       }
     })();
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, []);
 
-  return useCallback((kind: AlertKind) => {
-    void playAlertAsync(kind);
+  return useCallback((kind: AlertKind, opts?: PlayAlertOptions) => {
+    void playAlertAsync(kind, opts);
   }, []);
 }

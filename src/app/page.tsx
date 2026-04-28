@@ -121,9 +121,6 @@ export default function Home() {
               <h1 className="font-serif text-2xl font-light tracking-tight text-ds-fg sm:text-[1.75rem]">
                 Pulse Timer
               </h1>
-              <p className="mt-2 text-[10px] uppercase tracking-[0.22em] text-ds-soft sm:tracking-[0.24em]">
-                Interval · timer · stopwatch — offline in your browser
-              </p>
             </div>
             <div className="col-start-3 flex justify-end pt-0.5 sm:pt-1">
               <ThemeToggle />
@@ -132,7 +129,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center px-5 pb-16 pt-10 text-center sm:px-10">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-center px-5 pb-10 pt-10 text-center sm:px-10">
         <div className="w-full max-w-3xl">
           <Tabs
             active={tab}
@@ -174,12 +171,6 @@ export default function Home() {
             />
           </div>
         </div>
-
-        <footer className="mt-auto w-full max-w-3xl border-t border-ds-divider pt-10 text-center">
-          <p className="text-[9px] uppercase tracking-[0.2em] text-ds-dim sm:text-[10px] sm:tracking-[0.22em]">
-            Space pause · Enter start · Escape stop / reset
-          </p>
-        </footer>
       </main>
     </div>
   );

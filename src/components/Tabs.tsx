@@ -30,8 +30,8 @@ export function Tabs({ active, onChange }: Props) {
               `outline-none border-0 border-b-2 focus-visible:border-ds-hover ` +
               `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] ` +
               (isActive
-                ? "border-ds-fg bg-transparent text-ds-fg"
-                : "border-transparent bg-transparent text-ds-soft hover:text-ds-fg hover:bg-transparent")
+                ? "border-ds-fg bg-ds-section/55 text-ds-fg"
+                : "border-transparent bg-transparent text-ds-soft hover:text-ds-fg hover:bg-ds-section/25")
             }
             onClick={() => onChange(id)}
           >

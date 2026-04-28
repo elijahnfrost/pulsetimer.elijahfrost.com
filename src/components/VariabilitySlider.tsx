@@ -4,12 +4,14 @@ type Props = {
   value: number;
   onChange: (v: number) => void;
   disabled?: boolean;
+  /** Extra classes on the wrapper (width constraints, etc.) */
+  className?: string;
 };
 
 /** value 0–100 */
-export function VariabilitySlider({ value, onChange, disabled }: Props) {
+export function VariabilitySlider({ value, onChange, disabled, className = "" }: Props) {
   return (
-    <div className="flex w-full flex-col gap-2">
+    <div className={["flex w-full flex-col gap-2", className].filter(Boolean).join(" ")}>
       <div className="flex min-h-[1rem] flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.18em] text-ds-soft sm:tracking-[0.2em]">
         <label htmlFor="variability-slider" className="shrink-0">
           Variability{" "}
@@ -31,9 +33,6 @@ export function VariabilitySlider({ value, onChange, disabled }: Props) {
         onChange={(e) => onChange(Number(e.target.value))}
         onInput={(e) => onChange(Number((e.target as HTMLInputElement).value))}
       />
-      <p className="text-xs leading-relaxed text-ds-muted sm:text-sm">
-        At 0% intervals match exactly; at 100% they spread randomly while still summing correctly.
-      </p>
     </div>
   );
 }

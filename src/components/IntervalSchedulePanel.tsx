@@ -22,7 +22,6 @@ function statusLabel(playing: boolean, i: number, activeIndex: number): "Done" |
 
 type RingRowProps = {
   ringIndex: number;
-  plannedMs: number;
   displayTime: string;
   slab: "Done" | "Now" | "Next" | null;
   isCurrent: boolean;
@@ -32,7 +31,6 @@ type RingRowProps = {
 
 const RingRow = memo(function RingRow({
   ringIndex,
-  plannedMs,
   displayTime,
   slab,
   isCurrent,
@@ -72,10 +70,6 @@ const RingRow = memo(function RingRow({
         >
           {displayTime}
         </p>
-        {isCurrent && plannedMs > 0 ? (
-          <p className="text-[11px] text-ds-dim">Planned {formatMmSs(plannedMs)}</p>
-        ) : null}
-        {isPast ? <p className="text-[11px] text-ds-dim">Planned {formatMmSs(plannedMs)}</p> : null}
       </div>
     </div>
   );
@@ -154,7 +148,7 @@ export function IntervalSchedulePanel({
             </div>
           </div>
         ) : (
-          <p className="font-mono text-xs tabular-nums text-ds-muted">{formatMmSs(total)} planned</p>
+          <p className="font-mono text-xs tabular-nums text-ds-muted">{formatMmSs(total)}</p>
         )}
       </div>
 
@@ -179,7 +173,6 @@ export function IntervalSchedulePanel({
               <RingRow
                 key={`${i}-${plannedMs}`}
                 ringIndex={i}
-                plannedMs={plannedMs}
                 displayTime={formatMmSs(durationShown)}
                 slab={slab}
                 isCurrent={isCurrent}

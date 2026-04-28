@@ -236,7 +236,7 @@ section[id] {
   }
 
   .variability-slider::-webkit-slider-runnable-track {
-    height: 4px;
+    height: 6px;
     border-radius: 0;
     background-color: var(--color-border);
   }
@@ -244,9 +244,9 @@ section[id] {
   .variability-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    margin-top: -8px;
-    width: 18px;
-    height: 18px;
+    margin-top: -10px;
+    width: 22px;
+    height: 22px;
     border-radius: 0;
     border: 1px solid var(--color-border-hover);
     background: var(--color-fg-soft);
@@ -254,7 +254,7 @@ section[id] {
   }
 
   .variability-slider::-moz-range-track {
-    height: 4px;
+    height: 6px;
     border-radius: 0;
     border: none;
     background-color: var(--color-border);
@@ -262,8 +262,8 @@ section[id] {
 
   .variability-slider::-moz-range-thumb {
     appearance: none;
-    width: 18px;
-    height: 18px;
+    width: 22px;
+    height: 22px;
     border-radius: 0;
     border: 1px solid var(--color-border-hover);
     background: var(--color-fg-soft);

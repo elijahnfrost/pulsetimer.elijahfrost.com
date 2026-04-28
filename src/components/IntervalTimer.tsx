@@ -4,12 +4,18 @@ import { MutableRefObject, useCallback, useEffect, useRef, useState } from "reac
 import { ShortcutHandles } from "@/types/hotkeys";
 import { generateIntervals } from "@/lib/generateIntervals";
 import { formatMmSs, formatRingRemainingLine } from "@/lib/formatTime";
+import {
+  MAX_DURATION_TOTAL_SEC,
+  normalizeDurationParts,
+  totalMsFromNormalizedParts,
+} from "@/lib/normalizeDurationParts";
 import { useAccurateTimer } from "@/hooks/useAccurateTimer";
 import { primeAudioFromUserGesture, useAudioAlert } from "@/hooks/useAudioAlert";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ControlButton, ControlsRow } from "./Controls";
 import { NumberInput } from "./NumberInput";
 import { IntervalSchedulePanel } from "./IntervalSchedulePanel";
+import { IntervalSoundPanel } from "./IntervalSoundPanel";
 import { VariabilitySlider } from "./VariabilitySlider";
 
 const STORAGE_KEY = "pulse-timer:interval-v1";
@@ -18,6 +24,10 @@ type PersistShape = {
   minutes: number;
   secondsPart: number;
   rings: number;
+  /** Short tones at each interval segment end (1–12). */
+  chimeRepeats: number;
+  /** 0–100; stored as percent for simple inputs. */
+  chimeVolumePct: number;
   variabilityPct: number;
   scheduleMs: number[] | null;
   phase: "setup" | "play" | "complete";
@@ -61,6 +71,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   const [minutes, setMinutes] = useState(45);
   const [secondsPart, setSecondsPart] = useState(0);
   const [rings, setRings] = useState(12);
+  const [chimeRepeats, setChimeRepeats] = useState(5);
+  const [chimeVolumePct, setChimeVolumePct] = useState(85);
   const [variabilityPct, setVariabilityPct] = useState(40);
 
   const [scheduleMs, setScheduleMs] = useState<number[] | null>(null);
@@ -84,6 +96,11 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   remainingMsRef.current = remainingMs;
   const runningRef = useRef(running);
   runningRef.current = running;
+
+  const chimeRepeatsRef = useRef(chimeRepeats);
+  chimeRepeatsRef.current = chimeRepeats;
+  const chimeVolumePctRef = useRef(chimeVolumePct);
+  chimeVolumePctRef.current = chimeVolumePct;
 
   const persistTick = useCallback(() => {
     const intervals =
@@ -111,12 +128,25 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       minutes,
       secondsPart,
       rings,
+      chimeRepeats,
+      chimeVolumePct,
       variabilityPct,
       scheduleMs,
       phase,
       resume,
     });
-  }, [minutes, secondsPart, rings, variabilityPct, scheduleMs, phase, ctr, actualSegments]);
+  }, [
+    minutes,
+    secondsPart,
+    rings,
+    chimeRepeats,
+    chimeVolumePct,
+    variabilityPct,
+    scheduleMs,
+    phase,
+    ctr,
+    actualSegments,
+  ]);
 
   const persistTickRef = useRef(persistTick);
   persistTickRef.current = persistTick;
@@ -124,9 +154,20 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   useEffect(() => {
     const s = loadStored();
     if (s) {
-      setMinutes(s.minutes);
-      setSecondsPart(s.secondsPart);
+      const norm = normalizeDurationParts(s.minutes, s.secondsPart);
+      setMinutes(norm.minutes);
+      setSecondsPart(norm.secondsPart);
       setRings(s.rings);
+      setChimeRepeats(
+        typeof s.chimeRepeats === "number" && Number.isFinite(s.chimeRepeats)
+          ? Math.max(1, Math.min(12, Math.round(s.chimeRepeats)))
+          : 5
+      );
+      setChimeVolumePct(
+        typeof s.chimeVolumePct === "number" && Number.isFinite(s.chimeVolumePct)
+          ? Math.max(0, Math.min(100, Math.round(s.chimeVolumePct)))
+          : 85
+      );
       setVariabilityPct(s.variabilityPct);
       const sched = Array.isArray(s.scheduleMs) ? s.scheduleMs : null;
       const hasSchedule = Boolean(sched?.length);
@@ -183,6 +224,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     minutes,
     secondsPart,
     rings,
+    chimeRepeats,
+    chimeVolumePct,
     variabilityPct,
     scheduleMs,
     phase,
@@ -205,9 +248,13 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     };
   }, [persistTick]);
 
-  const totalMsPlanned =
-    minutes * 60_000 +
-    Math.min(59, Math.max(0, Math.floor(secondsPart))) * 1000;
+  const totalMsPlanned = totalMsFromNormalizedParts(minutes, secondsPart);
+
+  const applySessionDuration = (nextMinutes: number, nextSecondsField: number) => {
+    const n = normalizeDurationParts(nextMinutes, nextSecondsField);
+    setMinutes(n.minutes);
+    setSecondsPart(n.secondsPart);
+  };
 
   const regenerate = () => {
     primeAudioFromUserGesture();
@@ -228,22 +275,30 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
 
   const beginPlayback = () => {
     primeAudioFromUserGesture();
-    const intervals = intervalsRef.current.length ? intervalsRef.current : scheduleMs;
-    if (!intervals?.length) return;
-    intervalsRef.current = intervals;
+    const v = variabilityPct / 100;
+    const res = generateIntervals(totalMsPlanned, rings, v);
+    if (!res.ok) {
+      alert(res.error);
+      return;
+    }
+    intervalsRef.current = res.intervalsMs;
+    setScheduleMs(res.intervalsMs);
     setPhase("play");
     indexRef.current = 0;
     setCurrentIndex(0);
     setActualSegments([]);
-    const first = intervals[0];
-    ctr.reset(first!);
+    const first = res.intervalsMs[0]!;
+    ctr.reset(first);
     segmentsStartWallRef.current = Date.now();
     ctr.start();
     persistTick();
   };
 
   onSegmentCompleteRef.current = () => {
-    playChime("interval");
+    playChime("interval", {
+      intervalRepeats: chimeRepeatsRef.current,
+      intervalVolume: chimeVolumePctRef.current / 100,
+    });
 
     const intervals = intervalsRef.current;
     const idx = indexRef.current;
@@ -336,14 +391,14 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
         else if (phase === "play") stopSession();
       },
       start: () => {
-        if (phase === "setup" && scheduleMs) beginPlayback();
+        if (phase === "setup") beginPlayback();
       },
     };
     return () => {
       if (actionsRef) actionsRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- align hotkey actions with interval state
-  }, [actionsRef, phase, running, scheduleMs]);
+  }, [actionsRef, phase, running]);
 
   return (
     <div className="mx-auto mt-8 w-full space-y-8 text-center transition-opacity duration-ds ease-ds-out">
@@ -360,76 +415,133 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       {phase !== "complete" && phase !== "play" && (
         <section
           aria-label="Interval setup"
-          className="mx-auto w-full max-w-3xl space-y-6 border border-ds-section bg-ds-page px-4 py-8 text-center sm:px-10"
+          className="mx-auto w-full max-w-5xl border border-ds-section bg-ds-page px-4 py-8 text-center sm:px-10"
         >
-          <div className="flex flex-wrap justify-center gap-6">
-            <NumberInput label="Minutes" value={minutes} min={0} max={999} onChange={setMinutes} />
-            <NumberInput
-              label="Seconds"
-              value={secondsPart}
-              min={0}
-              max={59}
-              onChange={setSecondsPart}
-            />
-            <NumberInput label="Rings" value={rings} min={1} max={500} onChange={setRings} />
-          </div>
-          <VariabilitySlider value={variabilityPct} onChange={setVariabilityPct} />
-          <div className="flex gap-3 justify-center flex-wrap">
-            <ControlButton aria-label="Generate schedule" variant="secondary" onClick={regenerate}>
-              {scheduleMs ? "Regenerate" : "Generate schedule"}
-            </ControlButton>
+          <div
+            className={
+              scheduleMs?.length
+                ? "lg:grid lg:grid-cols-2 lg:items-start lg:gap-10 lg:text-left"
+                : ""
+            }
+          >
+            <div className="mx-auto w-full max-w-3xl space-y-6 text-center lg:mx-0 lg:max-w-none">
+              <div className="flex flex-wrap justify-center gap-6">
+                <NumberInput
+                  label="Minutes"
+                  value={minutes}
+                  min={0}
+                  max={999}
+                  onChange={(v) => applySessionDuration(v, secondsPart)}
+                />
+                <NumberInput
+                  label="Seconds"
+                  value={secondsPart}
+                  min={0}
+                  max={59}
+                  strictClamp={false}
+                  commitOnBlur
+                  disableDec={minutes * 60 + secondsPart <= 0}
+                  disableInc={minutes * 60 + secondsPart >= MAX_DURATION_TOTAL_SEC}
+                  onChange={(raw) => applySessionDuration(minutes, raw)}
+                />
+                <NumberInput label="Rings" value={rings} min={1} max={500} onChange={setRings} />
+              </div>
+              <VariabilitySlider
+                className="mx-auto w-full max-w-md"
+                value={variabilityPct}
+                onChange={setVariabilityPct}
+              />
+              <IntervalSoundPanel
+                chimeRepeats={chimeRepeats}
+                onChimeRepeatsChange={(v) => {
+                  chimeRepeatsRef.current = v;
+                  setChimeRepeats(v);
+                }}
+                chimeVolumePct={chimeVolumePct}
+                onChimeVolumeChange={(v) => {
+                  chimeVolumePctRef.current = v;
+                  setChimeVolumePct(v);
+                }}
+              />
+              <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
+                <ControlButton aria-label="Generate schedule" variant="secondary" onClick={regenerate}>
+                  {scheduleMs ? "Regenerate" : "Generate schedule"}
+                </ControlButton>
+                <ControlButton aria-label="Start interval session" onClick={beginPlayback}>
+                  Start
+                </ControlButton>
+              </div>
+            </div>
+
             {scheduleMs && (
-              <ControlButton aria-label="Start interval session" onClick={beginPlayback}>
-                Start
-              </ControlButton>
+              <div className="mt-8 border-t border-ds-divider pt-8 lg:mt-0 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
+                <IntervalSchedulePanel intervalsMs={scheduleMs} variant="embedded" />
+              </div>
             )}
           </div>
-
-          {scheduleMs && (
-            <div className="mt-8 border-t border-ds-divider pt-8">
-              <IntervalSchedulePanel intervalsMs={scheduleMs} variant="embedded" />
-            </div>
-          )}
         </section>
       )}
 
       {phase === "play" && sched.length > 0 && (
         <section
           aria-label="Playback"
-          className="mx-auto mb-[max(0rem,env(safe-area-inset-bottom))] flex w-full max-w-3xl flex-col pb-2 text-center"
+          className="mx-auto mb-[max(0.5rem,env(safe-area-inset-bottom))] w-full max-w-5xl border border-ds-section bg-ds-page px-4 py-6 text-center sm:px-10"
         >
-          <IntervalSchedulePanel
-            intervalsMs={sched}
-            activeIndex={currentIndex}
-            remainingMs={remainingMs}
-            flashActive={flashRing}
-            prefersReducedMotion={prefersReducedMotion}
-          />
+          <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-10 lg:text-left">
+            <div className="order-2 mt-8 flex min-w-0 flex-col gap-10 border-t border-ds-divider pt-8 lg:order-1 lg:mt-0 lg:border-t-0 lg:pr-10 lg:pt-0">
+              <div className="mx-auto w-full max-w-md lg:mx-0">
+                <IntervalSoundPanel
+                  className="lg:justify-start"
+                  chimeRepeats={chimeRepeats}
+                  onChimeRepeatsChange={(v) => {
+                    chimeRepeatsRef.current = v;
+                    setChimeRepeats(v);
+                  }}
+                  chimeVolumePct={chimeVolumePct}
+                  onChimeVolumeChange={(v) => {
+                    chimeVolumePctRef.current = v;
+                    setChimeVolumePct(v);
+                  }}
+                />
 
-          <div className="sticky bottom-2 z-[1] mt-6 w-full border-t border-ds-divider bg-ds-page/95 px-0 py-4 backdrop-blur-sm supports-[backdrop-filter]:bg-ds-page/85 supports-[backdrop-filter]:backdrop-blur-md sm:relative sm:bottom-auto sm:z-0 sm:mt-8 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
-            <ControlsRow className="w-full flex-col gap-3 [&>button]:w-full [&>button]:max-w-none sm:flex-row sm:flex-wrap sm:[&>button]:w-auto">
-              <ControlButton
-                aria-label={running ? "Pause" : "Resume"}
-                onClick={() => {
-                  primeAudioFromUserGesture();
-                  if (running) pausePlayback();
-                  else resumePlayback();
-                  persistTick();
-                }}
-              >
-                {running ? "Pause" : "Resume"}
-              </ControlButton>
-              <ControlButton
-                aria-label="Stop session"
-                variant="secondary"
-                onClick={() => {
-                  primeAudioFromUserGesture();
-                  stopSession();
-                }}
-              >
-                Stop
-              </ControlButton>
-            </ControlsRow>
+                <div className="mt-10 flex w-full flex-col gap-3">
+                  <ControlButton
+                    className="!min-w-0 w-full py-4"
+                    aria-label={running ? "Pause" : "Resume"}
+                    onClick={() => {
+                      primeAudioFromUserGesture();
+                      if (running) pausePlayback();
+                      else resumePlayback();
+                      persistTick();
+                    }}
+                  >
+                    {running ? "Pause" : "Resume"}
+                  </ControlButton>
+                  <ControlButton
+                    className="!min-w-0 w-full py-4"
+                    variant="secondary"
+                    aria-label="Stop session"
+                    onClick={() => {
+                      primeAudioFromUserGesture();
+                      stopSession();
+                    }}
+                  >
+                    Stop
+                  </ControlButton>
+                </div>
+              </div>
+            </div>
+
+            <div className="order-1 min-w-0 lg:order-2 lg:border-l lg:border-ds-divider lg:pl-10">
+              <IntervalSchedulePanel
+                intervalsMs={sched}
+                activeIndex={currentIndex}
+                remainingMs={remainingMs}
+                flashActive={flashRing}
+                prefersReducedMotion={prefersReducedMotion}
+                variant="embedded"
+              />
+            </div>
           </div>
         </section>
       )}
@@ -439,9 +551,6 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
           aria-label="Recovery"
           className="mx-auto w-full max-w-3xl space-y-4 border border-ds-section bg-ds-page px-4 py-8 sm:px-10"
         >
-          <p className="text-sm text-ds-body">
-            This session had no saved rings. Go back to setup to generate a schedule.
-          </p>
           <ControlsRow>
             <ControlButton
               aria-label="Back to interval setup"
@@ -467,7 +576,6 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
           className="mx-auto w-full max-w-3xl space-y-6 border border-ds-section bg-ds-page px-4 py-8 text-center transition-opacity duration-ds ease-ds-out sm:px-10"
         >
           <p className="font-serif text-[1.65rem] font-light tracking-tight text-ds-fg">All rings complete.</p>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-ds-soft">Actual segment durations</p>
           <ul className="mx-auto max-h-40 max-w-lg space-y-1 overflow-y-auto px-2 text-center text-sm leading-relaxed text-ds-body">
             {actualSegments.map((ms, i) => (
               <li key={`${i}-${ms}`}>

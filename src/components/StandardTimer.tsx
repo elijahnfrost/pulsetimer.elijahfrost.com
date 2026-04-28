@@ -179,8 +179,11 @@ export function StandardTimer({ actionsRef, onActivityChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionsRef, mode, isRunning, targetMs]);
 
-  const progressed = 1 - Math.min(1, Math.max(0, remainingMs) / targetMs);
-  const display = mode === "done" ? "Done" : formatMmSs(Math.max(0, remainingMs));
+  const showTargetWhileIdle = mode === "idle" && !isRunning;
+  const displayMs = mode === "done" ? 0 : showTargetWhileIdle ? targetMs : Math.max(0, remainingMs);
+  const display = mode === "done" ? "Done" : formatMmSs(displayMs);
+  const progressed =
+    mode === "done" ? 1 : showTargetWhileIdle ? 0 : 1 - Math.min(1, Math.max(0, remainingMs) / targetMs);
 
   return (
     <div className="mt-8 w-full space-y-8 text-center transition-opacity duration-ds ease-ds-out">

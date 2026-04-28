@@ -184,11 +184,8 @@ export function Stopwatch({ actionsRef, onActivityChange }: Props) {
           </ControlButton>
         </ControlsRow>
 
-        <div className="mx-auto max-h-48 max-w-2xl overflow-y-auto border border-ds-divider p-4 text-center">
-          <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-ds-soft">Laps</p>
-          {laps.length === 0 ? (
-            <p className="text-sm leading-relaxed text-ds-muted">No laps yet.</p>
-          ) : (
+        {laps.length > 0 ? (
+          <div className="mx-auto max-h-48 max-w-2xl overflow-y-auto border border-ds-divider p-4 text-center">
             <ol className="space-y-2 font-mono text-sm text-ds-fg">
               {laps.map((l, idx) => (
                 <li key={`${idx}-${l.cumulativeMs}`}>
@@ -196,8 +193,8 @@ export function Stopwatch({ actionsRef, onActivityChange }: Props) {
                 </li>
               ))}
             </ol>
-          )}
-        </div>
+          </div>
+        ) : null}
       </section>
     </div>
   );
