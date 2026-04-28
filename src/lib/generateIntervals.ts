@@ -1,6 +1,4 @@
-export const DEFAULT_MIN_INTERVAL_MS = 5000;
-/** When enabled in the UI, each ring is at least this long (aquarium water-change pacing). */
-export const WATER_CHANGE_MIN_INTERVAL_MS = 120_000;
+const MIN_INTERVAL_MS = 5000;
 
 export type GenerateIntervalsResult =
   | { ok: true; intervalsMs: number[] }
@@ -78,10 +76,9 @@ export function generateIntervals(
   totalDurationMs: number,
   numberOfRings: number,
   variability01: number,
-  rng: () => number = Math.random,
-  minIntervalMs: number = DEFAULT_MIN_INTERVAL_MS
+  rng: () => number = Math.random
 ): GenerateIntervalsResult {
-  const minMs = Math.max(1000, Math.floor(minIntervalMs));
+  const minMs = MIN_INTERVAL_MS;
   if (!Number.isFinite(totalDurationMs) || totalDurationMs <= 0) {
     return { ok: false, error: "Total duration must be positive." };
   }
@@ -90,10 +87,9 @@ export function generateIntervals(
     return { ok: false, error: "Need at least one ring." };
   }
   if (n * minMs > totalDurationMs + 1e-6) {
-    const sec = Math.round(minMs / 1000);
     return {
       ok: false,
-      error: `Total time is too short for ${n} rings (each needs at least ${sec} second${sec === 1 ? "" : "s"}).`,
+      error: `Total time is too short for ${n} rings (each needs at least 5 seconds).`,
     };
   }
 

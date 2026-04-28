@@ -2,11 +2,7 @@
 
 import { MutableRefObject, useCallback, useEffect, useRef, useState } from "react";
 import { ShortcutHandles } from "@/types/hotkeys";
-import {
-  DEFAULT_MIN_INTERVAL_MS,
-  generateIntervals,
-  WATER_CHANGE_MIN_INTERVAL_MS,
-} from "@/lib/generateIntervals";
+import { generateIntervals } from "@/lib/generateIntervals";
 import { formatMmSs, formatRingRemainingLine } from "@/lib/formatTime";
 import { useAccurateTimer } from "@/hooks/useAccurateTimer";
 import { primeAudioFromUserGesture, useAudioAlert } from "@/hooks/useAudioAlert";
@@ -24,8 +20,6 @@ type PersistShape = {
   secondsPart: number;
   rings: number;
   variabilityPct: number;
-  /** When true, each ring respects aquarium water-change pacing (longer minimum segment). */
-  waterChangesPacing?: boolean;
   scheduleMs: number[] | null;
   phase: "setup" | "play" | "complete";
   resume:
@@ -69,7 +63,6 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   const [secondsPart, setSecondsPart] = useState(0);
   const [rings, setRings] = useState(12);
   const [variabilityPct, setVariabilityPct] = useState(40);
-  const [waterChangesPacing, setWaterChangesPacing] = useState(false);
 
   const [scheduleMs, setScheduleMs] = useState<number[] | null>(null);
   const [phase, setPhase] = useState<"setup" | "play" | "complete">("setup");
@@ -115,7 +108,6 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       secondsPart,
       rings,
       variabilityPct,
-      waterChangesPacing,
       scheduleMs,
       phase,
       resume,
@@ -125,7 +117,6 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     secondsPart,
     rings,
     variabilityPct,
-    waterChangesPacing,
     scheduleMs,
     phase,
     running,
@@ -144,7 +135,6 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       setSecondsPart(s.secondsPart);
       setRings(s.rings);
       setVariabilityPct(s.variabilityPct);
-      setWaterChangesPacing(Boolean(s.waterChangesPacing));
       const sched = Array.isArray(s.scheduleMs) ? s.scheduleMs : null;
       const hasSchedule = Boolean(sched?.length);
       let phase = s.phase;
@@ -201,7 +191,6 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     secondsPart,
     rings,
     variabilityPct,
-    waterChangesPacing,
     scheduleMs,
     phase,
     persistTick,
@@ -230,8 +219,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   const regenerate = () => {
     primeAudioFromUserGesture();
     const v = variabilityPct / 100;
-    const minRingMs = waterChangesPacing ? WATER_CHANGE_MIN_INTERVAL_MS : DEFAULT_MIN_INTERVAL_MS;
-    const res = generateIntervals(totalMsPlanned, rings, v, Math.random, minRingMs);
+    const res = generateIntervals(totalMsPlanned, rings, v);
     if (!res.ok) {
       alert(res.error);
       return;
@@ -400,26 +388,6 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
             <NumberInput label="Rings" value={rings} min={1} max={500} onChange={setRings} />
           </div>
           <VariabilitySlider value={variabilityPct} onChange={setVariabilityPct} />
-          <label className="mx-auto flex max-w-md cursor-pointer select-none items-start gap-3 border border-ds-divider bg-ds-page/50 px-4 py-3 text-left sm:px-5">
-            <input
-              type="checkbox"
-              className="mt-1 h-4 w-4 shrink-0 rounded border border-ds-divider accent-ds-bright"
-              checked={waterChangesPacing}
-              onChange={(e) => setWaterChangesPacing(e.target.checked)}
-            />
-            <span>
-              <span className="block text-[10px] font-normal uppercase tracking-[0.2em] text-ds-soft">
-                Water changes
-              </span>
-              <span className="mt-1 block text-xs leading-relaxed text-ds-body">
-                Require at least{" "}
-                <span className="whitespace-nowrap font-mono text-ds-fg">
-                  {WATER_CHANGE_MIN_INTERVAL_MS / 60_000} min
-                </span>{" "}
-                per ring so draining, filling, and conditioning stay realistic.
-              </span>
-            </span>
-          </label>
           <div className="flex gap-3 justify-center flex-wrap">
             <ControlButton aria-label="Generate schedule" variant="secondary" onClick={regenerate}>
               {scheduleMs ? "Regenerate" : "Generate schedule"}
