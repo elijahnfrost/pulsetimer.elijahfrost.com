@@ -163,9 +163,12 @@ export function Stopwatch({ actionsRef, onActivityChange }: Props) {
   }, [actionsRef, running]);
 
   return (
-    <div className="mt-8 space-y-8 text-center transition-opacity duration-150 ease-out">
-      <section aria-label="Stopwatch" className="rounded-2xl border border-pulse-border bg-pulse-surface p-6 space-y-6">
-        <div className="tabular-nums-light text-pulse-text max-w-[100vw]" aria-live="polite">
+    <div className="mx-auto mt-8 w-full space-y-8 text-center transition-opacity duration-ds ease-ds-out">
+      <section aria-label="Stopwatch" className="mx-auto w-full max-w-3xl space-y-8 border border-ds-section bg-ds-page px-4 py-8 sm:px-10">
+        <div
+          className="tabular-nums-display mx-auto w-full max-w-4xl px-2 text-center text-ds-fg"
+          aria-live="polite"
+        >
           {formatElapsedWithMs(Math.max(0, elapsedMs))}
         </div>
 
@@ -181,12 +184,12 @@ export function Stopwatch({ actionsRef, onActivityChange }: Props) {
           </ControlButton>
         </ControlsRow>
 
-        <div className="text-left rounded-xl border border-pulse-border p-4 max-h-48 overflow-y-auto">
-          <p className="text-[0.875rem] text-pulse-muted mb-2">Laps</p>
+        <div className="mx-auto max-h-48 max-w-2xl overflow-y-auto border border-ds-divider p-4 text-center">
+          <p className="mb-3 text-[10px] uppercase tracking-[0.2em] text-ds-soft">Laps</p>
           {laps.length === 0 ? (
-            <p className="text-sm text-pulse-muted">No laps yet.</p>
+            <p className="text-sm leading-relaxed text-ds-muted">No laps yet.</p>
           ) : (
-            <ol className="space-y-1 text-sm font-mono text-pulse-text">
+            <ol className="space-y-2 font-mono text-sm text-ds-fg">
               {laps.map((l, idx) => (
                 <li key={`${idx}-${l.cumulativeMs}`}>
                   Lap {idx + 1}: {formatElapsedWithMs(l.lapMs)} · total {formatElapsedWithMs(l.cumulativeMs)}

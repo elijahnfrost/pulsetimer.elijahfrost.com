@@ -15,11 +15,7 @@ type Props = {
 
 export function Tabs({ active, onChange }: Props) {
   return (
-    <div
-      className="flex border-b border-pulse-border"
-      role="tablist"
-      aria-label="Pulse Timer tools"
-    >
+    <div role="tablist" aria-label="Pulse Timer tools" className="relative z-[1] flex w-full border border-ds-border">
       {TABS.map(({ id, label }) => {
         const isActive = active === id;
         return (
@@ -29,14 +25,22 @@ export function Tabs({ active, onChange }: Props) {
             role="tab"
             aria-selected={isActive}
             id={`tab-${id}`}
-            className={`flex-1 py-3 px-2 text-[0.8125rem] font-medium uppercase tracking-[0.08em] transition-colors duration-150 ease-out border-b-2 outline-none rounded-t-lg focus-visible:ring-2 focus-visible:ring-pulse-accent focus-visible:ring-offset-2 focus-visible:ring-offset-pulse-bg ${
+            className={
+              `flex-1 px-3 py-3 transition-colors duration-ds sm:px-4 ` +
+              `outline-none border border-transparent focus-visible:border-ds-hover ` +
+              `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] ` +
+              (isActive
+                ? "bg-transparent text-ds-fg"
+                : "bg-transparent text-ds-soft hover:text-ds-fg hover:bg-transparent")
+            }
+            style={
               isActive
-                ? "text-pulse-accent border-pulse-accent shadow-[inset_0_-1px_0_0_#6c63ff]"
-                : "text-pulse-muted border-transparent hover:text-pulse-text"
-            }`}
+                ? { boxShadow: "inset 0 -2px 0 0 var(--color-fg)" }
+                : { boxShadow: "none" }
+            }
             onClick={() => onChange(id)}
           >
-            {label}
+            <span className="block text-[9px] uppercase tracking-[0.2em] sm:text-[10px] sm:tracking-[0.22em]">{label}</span>
           </button>
         );
       })}

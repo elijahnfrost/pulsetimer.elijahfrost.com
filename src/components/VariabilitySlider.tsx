@@ -9,10 +9,14 @@ type Props = {
 /** value 0–100 */
 export function VariabilitySlider({ value, onChange, disabled }: Props) {
   return (
-    <div className="w-full flex flex-col gap-2">
-      <div className="flex justify-between text-[0.875rem] text-pulse-muted">
-        <label htmlFor="variability-slider">Variability</label>
-        <span aria-live="polite">{value}%</span>
+    <div className="flex w-full flex-col gap-2">
+      <div className="flex min-h-[1rem] flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.18em] text-ds-soft sm:tracking-[0.2em]">
+        <label htmlFor="variability-slider" className="shrink-0">
+          Variability{" "}
+        </label>
+        <span aria-live="polite" className="shrink-0 font-mono tabular-nums">
+          {value}%
+        </span>
       </div>
       <input
         id="variability-slider"
@@ -24,10 +28,10 @@ export function VariabilitySlider({ value, onChange, disabled }: Props) {
         disabled={disabled}
         aria-valuetext={`${value} percent`}
         className="variability-slider w-full"
-        style={{ height: 4 }}
         onChange={(e) => onChange(Number(e.target.value))}
+        onInput={(e) => onChange(Number((e.target as HTMLInputElement).value))}
       />
-      <p className="text-[0.75rem] text-pulse-muted">
+      <p className="text-xs leading-relaxed text-ds-muted sm:text-sm">
         At 0% intervals match exactly; at 100% they spread randomly while still summing correctly.
       </p>
     </div>

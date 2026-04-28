@@ -23,12 +23,12 @@ export function NumberInput({
   const clamp = (n: number) => Math.min(max, Math.max(min, n));
 
   return (
-    <div className="flex flex-col gap-1 items-center">
-      <span className="text-[0.875rem] text-pulse-muted">{label}</span>
-      <div className="flex rounded-full border border-pulse-border overflow-hidden focus-within:shadow-accent-glow">
+    <div className="flex flex-col items-center gap-2">
+      <span className="text-[10px] uppercase tracking-[0.2em] text-ds-soft sm:text-[10px] sm:tracking-[0.22em]">{label}</span>
+      <div className="flex overflow-hidden border border-ds-section bg-ds-page focus-within:border-ds-hover">
         <button
           type="button"
-          className="w-11 h-12 text-pulse-accent hover:bg-pulse-border/60 transition-colors focus-visible:z-10 focus-visible:focus-ring"
+          className="flex h-12 w-11 shrink-0 items-center justify-center text-ds-muted transition-colors duration-ds hover:bg-transparent hover:text-ds-fg disabled:opacity-35 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-fg-muted)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-page)]"
           aria-label={`Decrease ${label}`}
           disabled={disabled || value <= min}
           onClick={() => onChange(clamp(value - step))}
@@ -36,7 +36,7 @@ export function NumberInput({
           −
         </button>
         <input
-          className="w-14 sm:w-16 h-12 bg-transparent text-center font-mono text-lg text-pulse-text outline-none border-x border-pulse-border [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="h-12 w-14 shrink-0 border-x border-ds-divider bg-transparent text-center font-mono text-base text-ds-fg outline-none transition-colors duration-100 placeholder:text-ds-label [appearance:textfield] focus:border-transparent sm:w-16 sm:text-lg [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
           disabled={disabled}
           type="number"
           inputMode="numeric"
@@ -57,7 +57,7 @@ export function NumberInput({
         />
         <button
           type="button"
-          className="w-11 h-12 text-pulse-accent hover:bg-pulse-border/60 transition-colors focus-visible:z-10 focus-visible:focus-ring"
+          className="flex h-12 w-11 shrink-0 items-center justify-center text-ds-muted transition-colors duration-ds hover:text-ds-fg disabled:opacity-35 focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-fg-muted)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-page)]"
           aria-label={`Increase ${label}`}
           disabled={disabled || value >= max}
           onClick={() => onChange(clamp(value + step))}

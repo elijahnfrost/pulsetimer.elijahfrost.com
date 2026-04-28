@@ -1,12 +1,12 @@
 /**
- * Design tokens and base styles for the Elijah Frost visual language.
+ * Elijah Frost design tokens and shared base helpers (themes, transitions, fade-in-up).
  *
- * Usage in a Next.js + Tailwind v4 app: in `app/globals.css`, keep the Tailwind
- * import and `@theme` block first, then paste or `@import` this file’s contents
- * below them. See README.md in this folder.
+ * **Pulse Timer:** This file is the single source of truth. The identical block is also
+ * inlined at the top of `src/styles/globals.css` so Next bundles one stylesheet and avoids
+ * CSS chunk race conditions. Edit here first, then copy the `:root` through `.fade-in-up`
+ * reduce block into `globals.css` above `@tailwind`.
  *
- * Sync source: `app/globals.css` in the elijahfrost.com repo (custom cursor rules
- * are optional and live only on the main site).
+ * Portable copy for other projects: see STYLE_GUIDE.md and design-system/README.md.
  */
 
 /* Shared theme switch timing — nav chrome uses the same tokens; linear keeps all paints in phase */
@@ -35,14 +35,11 @@
   --color-hero-grid: #e4dfd8;
   --color-footer-year: #2a2a2a;
   --color-error-text: #5a4a4a;
-  /* Text selection: soft mix of fg + page (readable but quieter than a flat gray block) */
   --color-selection-bg: color-mix(in srgb, var(--color-fg) 16%, var(--color-bg-page));
   --color-selection-fg: var(--color-fg);
-  /* Custom cursor (optional): same as body text; stroke uses page bg where used */
   --cursor-fill: var(--color-fg);
   --cursor-stroke: var(--color-bg-page);
   --cursor-arrow-fill: var(--color-fg);
-  /* Touch (iOS Safari): subtle flash aligned with dark palette */
   --color-tap-highlight: rgba(228, 223, 216, 0.12);
 }
 
@@ -80,12 +77,10 @@ html.light {
   --color-tap-highlight: rgba(28, 25, 23, 0.08);
 }
 
-/* Mobile Safari: default blue flash → same language as selection (subtle, theme-aware) */
 html {
   -webkit-tap-highlight-color: var(--color-tap-highlight);
 }
 
-/* Custom cursor: hide system pointer when your app enables it (e.g. set `data-cursor-custom` on `<html>`). Optional — skip if you use the default OS cursor. See STYLE_GUIDE.md. */
 html[data-cursor-custom],
 html[data-cursor-custom] * {
   cursor: none !important;
@@ -99,7 +94,6 @@ body {
   background: var(--color-bg-page);
   color: var(--color-fg);
   font-family: var(--font-inter), system-ui, sans-serif;
-  /* Slightly denser copy on small screens; scales up at sm+ */
   font-size: 0.9375rem;
   line-height: 1.55;
 }
@@ -114,10 +108,6 @@ body {
   color: var(--color-selection-fg);
 }
 
-/*
- * One rule for body + all descendants: same duration, delay, and linear easing.
- * Gradients that use currentColor follow the same color transition as text.
- */
 body,
 body * {
   transition-property: background-color, color, border-color, outline-color, fill, stroke;
@@ -133,7 +123,6 @@ body * {
   }
 }
 
-/* Theme toggle: snap SVG strokes (stroke tween felt jittery); color still uses rule above */
 [data-theme-toggle] svg {
   transition: none;
 }
@@ -146,7 +135,6 @@ body * {
 }
 
 section[id] {
-  /* Matches fixed nav: h-14 mobile + safe area, 72px sm+ */
   scroll-margin-top: calc(3.5rem + env(safe-area-inset-top, 0px));
 }
 
@@ -156,7 +144,6 @@ section[id] {
   }
 }
 
-/* Same motion language as primary UI (cubic-bezier(0.16, 1, 0.3, 1)) — short, smooth */
 @keyframes fadeUp {
   from {
     opacity: 0;

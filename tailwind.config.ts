@@ -9,25 +9,32 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        pulse: {
-          bg: "var(--pulse-bg)",
-          surface: "var(--pulse-surface)",
-          border: "var(--pulse-border)",
-          text: "var(--pulse-text)",
-          muted: "var(--pulse-text-secondary)",
-          accent: "var(--pulse-accent)",
-          alert: "var(--pulse-alert)",
-          success: "var(--pulse-success)",
+        ds: {
+          page: "var(--color-bg-page)",
+          fg: "var(--color-fg)",
+          bright: "var(--color-fg-bright)",
+          muted: "var(--color-fg-muted)",
+          dim: "var(--color-fg-dim)",
+          soft: "var(--color-fg-soft)",
+          body: "var(--color-fg-body)",
+          label: "var(--color-label)",
+          border: "var(--color-border)",
+          hover: "var(--color-border-hover)",
+          section: "var(--color-border-section)",
+          divider: "var(--color-border-divider)",
+          chrome: "var(--color-chrome-border)",
         },
       },
-      boxShadow: {
-        "accent-glow": "0 0 0 3px rgba(108, 99, 255, 0.2)",
+      fontFamily: {
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        serif: ["var(--font-cormorant)", "Georgia", "ui-serif"],
+        display: ["var(--font-cormorant)", "Georgia", "ui-serif"],
       },
       transitionDuration: {
-        DEFAULT: "150ms",
+        ds: "120ms",
       },
       transitionTimingFunction: {
-        DEFAULT: "ease-out",
+        "ds-out": "cubic-bezier(0.16, 1, 0.3, 1)",
       },
     },
   },

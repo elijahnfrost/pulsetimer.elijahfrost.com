@@ -181,10 +181,10 @@ export function StandardTimer({ actionsRef, onActivityChange }: Props) {
   const display = mode === "done" ? "Done" : formatMmSs(Math.max(0, remainingMs));
 
   return (
-    <div className="mt-8 space-y-8 text-center transition-opacity duration-150 ease-out">
+    <div className="mt-8 w-full space-y-8 text-center transition-opacity duration-ds ease-ds-out">
       <section
         aria-label="Standard countdown"
-        className="rounded-2xl border border-pulse-border bg-pulse-surface p-6 space-y-6"
+        className="mx-auto w-full max-w-3xl space-y-8 border border-ds-section bg-ds-page px-4 py-8 text-center sm:px-10"
       >
         <div className="flex flex-wrap justify-center gap-6">
           <NumberInput label="Hours" value={h} min={0} max={999} onChange={setH} disabled={isRunning} />
@@ -206,10 +206,19 @@ export function StandardTimer({ actionsRef, onActivityChange }: Props) {
           />
         </div>
 
-        <CircularProgress progress={mode === "done" ? 1 : progressed} flashing={flash} reducedMotion={prefersReducedMotion}>
-          <div className={`tabular-nums-light ${mode === "done" ? "text-pulse-success" : "text-pulse-text"}`}>
-            {display}
-          </div>
+        <CircularProgress
+          progress={mode === "done" ? 1 : progressed}
+          flashing={flash}
+          reducedMotion={prefersReducedMotion}
+          ringContent={mode === "done" ? "free" : "digits"}
+        >
+          {mode === "done" ? (
+            <span className="font-display text-[clamp(1.65rem,min(8vmin,9vw),2.85rem)] font-light tracking-tight text-ds-bright">
+              Done
+            </span>
+          ) : (
+            display
+          )}
         </CircularProgress>
 
         <ControlsRow>

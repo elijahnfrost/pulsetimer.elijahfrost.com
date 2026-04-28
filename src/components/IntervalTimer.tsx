@@ -327,7 +327,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   }, [actionsRef, phase, running, scheduleMs]);
 
   return (
-    <div className="space-y-8 mt-8 transition-opacity duration-150 ease-out">
+    <div className="mx-auto mt-8 w-full space-y-8 text-center transition-opacity duration-ds ease-ds-out">
       <p className="sr-only" aria-live="polite">
         {phase === "play"
           ? formatRingRemainingLine(
@@ -341,7 +341,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       {phase !== "complete" && (
         <section
           aria-label="Interval setup"
-          className="rounded-2xl border border-pulse-border bg-pulse-surface p-6 space-y-6"
+          className="mx-auto w-full max-w-3xl space-y-6 border border-ds-section bg-ds-page px-4 py-8 text-center sm:px-10"
         >
           <div className="flex flex-wrap justify-center gap-6">
             <NumberInput label="Minutes" value={minutes} min={0} max={999} onChange={setMinutes} disabled={phase === "play"} />
@@ -378,12 +378,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
 
       {phase === "play" && (
         <section aria-label="Playback" className="flex flex-col items-center gap-6 text-center">
-          <CircularProgress
-            progress={progressed}
-            flashing={flashRing}
-            reducedMotion={prefersReducedMotion}
-          >
-            <div className="tabular-nums-light text-pulse-text">{ringDisplay}</div>
+          <CircularProgress progress={progressed} flashing={flashRing} reducedMotion={prefersReducedMotion}>
+            {ringDisplay}
           </CircularProgress>
 
           <ControlsRow>
@@ -405,10 +401,13 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       )}
 
       {phase === "complete" && (
-        <section aria-live="polite" className="rounded-2xl border border-pulse-border bg-pulse-surface p-6 space-y-4 text-center transition-opacity duration-150 ease-out">
-          <p className="text-2xl text-pulse-success font-medium">All rings complete.</p>
-          <p className="text-[0.875rem] text-pulse-muted">Actual segment durations</p>
-          <ul className="max-h-40 overflow-y-auto text-left text-sm space-y-1 text-pulse-text px-4">
+        <section
+          aria-live="polite"
+          className="mx-auto w-full max-w-3xl space-y-6 border border-ds-section bg-ds-page px-4 py-8 text-center transition-opacity duration-ds ease-ds-out sm:px-10"
+        >
+          <p className="font-serif text-[1.65rem] font-light tracking-tight text-ds-fg">All rings complete.</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-ds-soft">Actual segment durations</p>
+          <ul className="mx-auto max-h-40 max-w-lg space-y-1 overflow-y-auto px-2 text-center text-sm leading-relaxed text-ds-body">
             {actualSegments.map((ms, i) => (
               <li key={`${i}-${ms}`}>
                 Ring {i + 1}: {formatMmSs(ms)}

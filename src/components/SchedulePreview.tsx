@@ -4,23 +4,25 @@ import { formatMmSs } from "@/lib/formatTime";
 
 type Props = {
   intervalsMs: number[];
-  collapsedDefault?: boolean;
 };
 
 export function SchedulePreview({ intervalsMs }: Props) {
   const total = intervalsMs.reduce((a, b) => a + b, 0);
 
   return (
-    <details className="rounded-xl border border-pulse-border bg-pulse-surface/50 px-4 py-3 text-left">
-      <summary className="cursor-pointer select-none text-sm font-medium text-pulse-text list-none flex justify-between gap-4">
-        <span>Schedule preview ({intervalsMs.length} rings)</span>
-        <span className="text-pulse-muted">{formatMmSs(total)} total</span>
+    <details className="mx-auto w-full border border-ds-section bg-ds-page px-4 py-3 text-center">
+      <summary className="flex list-none cursor-pointer flex-col items-center gap-2 text-center text-sm leading-snug font-normal text-ds-fg hover:text-ds-bright sm:flex-row sm:justify-between sm:gap-4 sm:text-left [&::-webkit-details-marker]:hidden [&::marker]:content-none">
+        <span>Schedule ({intervalsMs.length} rings)</span>
+        <span className="shrink-0 font-mono text-xs text-ds-muted tabular-nums">{formatMmSs(total)} total</span>
       </summary>
-      <ul className="mt-4 max-h-48 overflow-y-auto space-y-1 pr-2 text-sm text-pulse-muted">
+      <ul className="mx-auto mt-4 max-h-48 max-w-lg space-y-0 overflow-y-auto pr-1 text-sm text-ds-body">
         {intervalsMs.map((ms, i) => (
-          <li key={`${i}-${ms}`} className="flex justify-between border-b border-pulse-border/50 pb-1 last:border-b-0">
-            <span>Ring {i + 1}</span>
-            <span className="font-mono text-pulse-text">{formatMmSs(ms)}</span>
+          <li
+            key={`${i}-${ms}`}
+            className="flex justify-center gap-4 border-b border-ds-divider py-2 last:border-b-0 sm:justify-between"
+          >
+            <span className="text-ds-muted">Ring {i + 1}</span>
+            <span className="font-mono text-ds-fg tabular-nums">{formatMmSs(ms)}</span>
           </li>
         ))}
       </ul>
