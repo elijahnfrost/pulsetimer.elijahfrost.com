@@ -415,18 +415,19 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       {phase !== "complete" && phase !== "play" && (
         <section
           aria-label="Interval setup"
-          className="mx-auto w-full max-w-5xl border border-ds-section bg-ds-page px-4 py-8 text-center sm:px-10"
+          className="mx-auto w-full max-w-6xl px-4 py-8 text-center sm:px-10"
         >
           <div
             className={
               scheduleMs?.length
-                ? "lg:grid lg:grid-cols-2 lg:items-start lg:gap-10 lg:text-left"
+                ? "lg:grid lg:grid-cols-3 lg:items-start lg:gap-x-10 lg:gap-y-0 lg:text-left"
                 : ""
             }
           >
-            <div className="mx-auto w-full max-w-3xl space-y-6 text-center lg:mx-0 lg:max-w-none">
-              <div className="flex flex-wrap justify-center gap-6">
+            <div className="mx-auto w-full space-y-5 text-center lg:col-span-1 lg:mx-0 lg:max-w-none lg:text-left">
+              <div className="mx-auto grid w-full min-w-0 max-w-[17.5rem] grid-cols-3 gap-4 sm:max-w-md sm:gap-5 lg:mx-0">
                 <NumberInput
+                  layout="fill"
                   label="Minutes"
                   value={minutes}
                   min={0}
@@ -434,6 +435,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   onChange={(v) => applySessionDuration(v, secondsPart)}
                 />
                 <NumberInput
+                  layout="fill"
                   label="Seconds"
                   value={secondsPart}
                   min={0}
@@ -444,14 +446,15 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   disableInc={minutes * 60 + secondsPart >= MAX_DURATION_TOTAL_SEC}
                   onChange={(raw) => applySessionDuration(minutes, raw)}
                 />
-                <NumberInput label="Rings" value={rings} min={1} max={500} onChange={setRings} />
+                <NumberInput layout="fill" label="Rings" value={rings} min={1} max={500} onChange={setRings} />
               </div>
               <VariabilitySlider
-                className="mx-auto w-full max-w-md"
+                className="mx-auto w-full lg:mx-0 lg:max-w-none"
                 value={variabilityPct}
                 onChange={setVariabilityPct}
               />
               <IntervalSoundPanel
+                className="lg:justify-start"
                 chimeRepeats={chimeRepeats}
                 onChimeRepeatsChange={(v) => {
                   chimeRepeatsRef.current = v;
@@ -463,18 +466,23 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   setChimeVolumePct(v);
                 }}
               />
-              <div className="flex flex-wrap justify-center gap-3 lg:justify-start">
-                <ControlButton aria-label="Generate schedule" variant="secondary" onClick={regenerate}>
-                  {scheduleMs ? "Regenerate" : "Generate schedule"}
-                </ControlButton>
-                <ControlButton aria-label="Start interval session" onClick={beginPlayback}>
+              <div className="mx-auto mt-10 flex w-full max-w-md flex-col gap-3 lg:mx-0 lg:max-w-none">
+                <ControlButton className="!min-w-0 w-full py-4" aria-label="Start interval session" onClick={beginPlayback}>
                   Start
+                </ControlButton>
+                <ControlButton
+                  className="!min-w-0 w-full py-4"
+                  aria-label="Generate schedule"
+                  variant="secondary"
+                  onClick={regenerate}
+                >
+                  {scheduleMs ? "Regenerate" : "Generate schedule"}
                 </ControlButton>
               </div>
             </div>
 
             {scheduleMs && (
-              <div className="mt-8 border-t border-ds-divider pt-8 lg:mt-0 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
+              <div className="mt-8 border-t border-ds-divider pt-6 lg:col-span-2 lg:mt-0 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
                 <IntervalSchedulePanel intervalsMs={scheduleMs} variant="embedded" />
               </div>
             )}
@@ -485,10 +493,10 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       {phase === "play" && sched.length > 0 && (
         <section
           aria-label="Playback"
-          className="mx-auto mb-[max(0.5rem,env(safe-area-inset-bottom))] w-full max-w-5xl border border-ds-section bg-ds-page px-4 py-6 text-center sm:px-10"
+          className="mx-auto mb-[max(0.5rem,env(safe-area-inset-bottom))] w-full max-w-6xl px-4 py-6 text-center sm:px-10"
         >
-          <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-10 lg:text-left">
-            <div className="order-2 mt-8 flex min-w-0 flex-col gap-10 border-t border-ds-divider pt-8 lg:order-1 lg:mt-0 lg:border-t-0 lg:pr-10 lg:pt-0">
+          <div className="lg:grid lg:grid-cols-3 lg:items-start lg:gap-x-10 lg:text-left">
+            <div className="order-2 mt-8 flex min-w-0 flex-col gap-10 border-t border-ds-divider pt-8 lg:order-1 lg:col-span-1 lg:mt-0 lg:border-t-0 lg:pr-8 lg:pt-0">
               <div className="mx-auto w-full max-w-md lg:mx-0">
                 <IntervalSoundPanel
                   className="lg:justify-start"
@@ -532,7 +540,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
               </div>
             </div>
 
-            <div className="order-1 min-w-0 lg:order-2 lg:border-l lg:border-ds-divider lg:pl-10">
+            <div className="order-1 min-w-0 lg:order-2 lg:col-span-2 lg:border-l lg:border-ds-divider lg:pl-8">
               <IntervalSchedulePanel
                 intervalsMs={sched}
                 activeIndex={currentIndex}
@@ -549,7 +557,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       {phase === "play" && sched.length === 0 && (
         <section
           aria-label="Recovery"
-          className="mx-auto w-full max-w-3xl space-y-4 border border-ds-section bg-ds-page px-4 py-8 sm:px-10"
+          className="mx-auto w-full max-w-3xl space-y-4 px-4 py-8 sm:px-10"
         >
           <ControlsRow>
             <ControlButton
@@ -573,7 +581,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       {phase === "complete" && (
         <section
           aria-live="polite"
-          className="mx-auto w-full max-w-3xl space-y-6 border border-ds-section bg-ds-page px-4 py-8 text-center transition-opacity duration-ds ease-ds-out sm:px-10"
+          className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 text-center transition-opacity duration-ds ease-ds-out sm:px-10"
         >
           <p className="font-serif text-[1.65rem] font-light tracking-tight text-ds-fg">All rings complete.</p>
           <ul className="mx-auto max-h-40 max-w-lg space-y-1 overflow-y-auto px-2 text-center text-sm leading-relaxed text-ds-body">

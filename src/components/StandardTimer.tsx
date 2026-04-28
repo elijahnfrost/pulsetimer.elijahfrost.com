@@ -189,7 +189,7 @@ export function StandardTimer({ actionsRef, onActivityChange }: Props) {
     <div className="mt-8 w-full space-y-8 text-center transition-opacity duration-ds ease-ds-out">
       <section
         aria-label="Standard countdown"
-        className="mx-auto w-full max-w-3xl space-y-8 border border-ds-section bg-ds-page px-4 py-8 text-center sm:px-10"
+        className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8 text-center sm:px-10"
       >
         <div className="flex flex-wrap justify-center gap-6">
           <NumberInput label="Hours" value={h} min={0} max={999} onChange={setH} disabled={isRunning} />

@@ -164,7 +164,7 @@ export function Stopwatch({ actionsRef, onActivityChange }: Props) {
 
   return (
     <div className="mx-auto mt-8 w-full space-y-8 text-center transition-opacity duration-ds ease-ds-out">
-      <section aria-label="Stopwatch" className="mx-auto w-full max-w-3xl space-y-8 border border-ds-section bg-ds-page px-4 py-8 sm:px-10">
+      <section aria-label="Stopwatch" className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8 sm:px-10">
         <div
           className="tabular-nums-display mx-auto w-full max-w-4xl px-2 text-center text-ds-fg"
           aria-live="polite"

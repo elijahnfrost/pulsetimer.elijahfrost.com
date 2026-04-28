@@ -14,7 +14,7 @@ export function VariabilitySlider({ value, onChange, disabled, className = "" }:
     <div className={["flex w-full flex-col gap-2", className].filter(Boolean).join(" ")}>
       <div className="flex min-h-[1rem] flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.18em] text-ds-soft sm:tracking-[0.2em]">
         <label htmlFor="variability-slider" className="shrink-0">
-          Variability{" "}
+          Variability
         </label>
         <span aria-live="polite" className="shrink-0 font-mono tabular-nums">
           {value}%

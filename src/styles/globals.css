@@ -218,13 +218,19 @@ section[id] {
 }
 
 @layer components {
-  /* Range sizing: browsers often collapse intrinsic height after appearance:none (bad hit-targets). */
+  /*
+   * Range controls: thumb vertically centered on track (track / thumb heights must stay in sync).
+   * WebKit: thumb uses margin-top = (track − thumb) / 2. Match input height to number steppers (h-12).
+   */
   .variability-slider {
+    --slider-track-height: 6px;
+    --slider-thumb-size: 22px;
     -webkit-appearance: none;
+    -moz-appearance: none;
     appearance: none;
     display: block;
     width: 100%;
-    height: 2.75rem;
+    height: 3rem; /* aligns with NumberInput row (h-12) */
     cursor: pointer;
     background-color: transparent;
     accent-color: var(--color-fg-soft);
@@ -236,7 +242,7 @@ section[id] {
   }
 
   .variability-slider::-webkit-slider-runnable-track {
-    height: 6px;
+    height: var(--slider-track-height);
     border-radius: 0;
     background-color: var(--color-border);
   }
@@ -244,9 +250,9 @@ section[id] {
   .variability-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    margin-top: -10px;
-    width: 22px;
-    height: 22px;
+    margin-top: calc((var(--slider-track-height) - var(--slider-thumb-size)) / 2);
+    width: var(--slider-thumb-size);
+    height: var(--slider-thumb-size);
     border-radius: 0;
     border: 1px solid var(--color-border-hover);
     background: var(--color-fg-soft);
@@ -254,7 +260,7 @@ section[id] {
   }
 
   .variability-slider::-moz-range-track {
-    height: 6px;
+    height: var(--slider-track-height);
     border-radius: 0;
     border: none;
     background-color: var(--color-border);
@@ -262,8 +268,8 @@ section[id] {
 
   .variability-slider::-moz-range-thumb {
     appearance: none;
-    width: 22px;
-    height: 22px;
+    width: var(--slider-thumb-size);
+    height: var(--slider-thumb-size);
     border-radius: 0;
     border: 1px solid var(--color-border-hover);
     background: var(--color-fg-soft);

@@ -19,8 +19,8 @@ const primary =
 
 const secondary =
   `inline-flex min-h-[44px] min-w-[7.5rem] items-center justify-center border border-ds-divider ` +
-  `bg-transparent px-5 py-2.5 text-[9px] font-normal uppercase tracking-[0.18em] text-ds-dim ` +
-  `transition-all duration-ds hover:border-ds-border hover:text-ds-soft ` +
+  `bg-transparent px-5 py-2.5 text-[9px] font-normal uppercase tracking-[0.18em] text-ds-soft ` +
+  `transition-all duration-ds hover:border-ds-border hover:text-ds-fg ` +
   `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] ` +
   `sm:min-h-[44px] sm:px-7 sm:text-[10px] sm:tracking-[0.18em]`;
 
