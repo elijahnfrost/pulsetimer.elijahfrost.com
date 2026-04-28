@@ -5,12 +5,12 @@ import { ShortcutHandles } from "@/types/hotkeys";
 import { generateIntervals } from "@/lib/generateIntervals";
 import { formatMmSs, formatRingRemainingLine } from "@/lib/formatTime";
 import { useAccurateTimer } from "@/hooks/useAccurateTimer";
-import { useAudioAlert } from "@/hooks/useAudioAlert";
+import { primeAudioFromUserGesture, useAudioAlert } from "@/hooks/useAudioAlert";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { CircularProgress } from "./CircularProgress";
 import { ControlButton, ControlsRow } from "./Controls";
 import { NumberInput } from "./NumberInput";
-import { SchedulePreview } from "./SchedulePreview";
+import { IntervalSchedulePanel } from "./IntervalSchedulePanel";
 import { VariabilitySlider } from "./VariabilitySlider";
 
 const STORAGE_KEY = "pulse-timer:interval-v1";
@@ -123,18 +123,34 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       setSecondsPart(s.secondsPart);
       setRings(s.rings);
       setVariabilityPct(s.variabilityPct);
-      setScheduleMs(s.scheduleMs);
-      setPhase(s.phase);
-      intervalsRef.current = s.scheduleMs ?? [];
-      indexRef.current = s.resume?.index ?? 0;
-      setCurrentIndex(s.resume?.index ?? 0);
-      setActualSegments(s.resume?.actualMs ?? []);
+      const sched = Array.isArray(s.scheduleMs) ? s.scheduleMs : null;
+      const hasSchedule = Boolean(sched?.length);
+      let phase = s.phase;
+      if ((phase === "play" || phase === "complete") && !hasSchedule) {
+        phase = "setup";
+      }
+      setScheduleMs(hasSchedule ? sched : null);
+      setPhase(phase);
+      intervalsRef.current = hasSchedule ? sched! : [];
+      if (phase === "play" && hasSchedule) {
+        indexRef.current = s.resume?.index ?? 0;
+        setCurrentIndex(s.resume?.index ?? 0);
+        setActualSegments(s.resume?.actualMs ?? []);
+      } else if (phase === "complete" && hasSchedule) {
+        indexRef.current = 0;
+        setCurrentIndex(0);
+        setActualSegments(s.resume?.actualMs ?? []);
+      } else {
+        indexRef.current = 0;
+        setCurrentIndex(0);
+        setActualSegments([]);
+      }
 
       const res = s.resume;
       requestAnimationFrame(() => {
-        if (s.phase === "complete") return;
-        if (s.phase === "play" && res && (s.scheduleMs?.length ?? 0) > 0) {
-          const intervals = s.scheduleMs!;
+        if (phase === "complete") return;
+        if (phase === "play" && res && hasSchedule) {
+          const intervals = sched!;
           const idx = res.index ?? 0;
           intervalsRef.current = intervals;
           if (typeof res.pausedRemainMs === "number" && res.segmentDeadlineTs == null) {
@@ -187,6 +203,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     Math.min(59, Math.max(0, Math.floor(secondsPart))) * 1000;
 
   const regenerate = () => {
+    primeAudioFromUserGesture();
     const v = variabilityPct / 100;
     const res = generateIntervals(totalMsPlanned, rings, v);
     if (!res.ok) {
@@ -203,6 +220,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   };
 
   const beginPlayback = () => {
+    primeAudioFromUserGesture();
     const intervals = intervalsRef.current.length ? intervalsRef.current : scheduleMs;
     if (!intervals?.length) return;
     intervalsRef.current = intervals;
@@ -218,7 +236,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   };
 
   onSegmentCompleteRef.current = () => {
-    playChime();
+    playChime("interval");
 
     const intervals = intervalsRef.current;
     const idx = indexRef.current;
@@ -309,6 +327,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     actionsRef.current = {
       toggle: () => {
         if (phase !== "play") return;
+        primeAudioFromUserGesture();
         if (running) pausePlayback();
         else resumePlayback();
       },
@@ -338,54 +357,61 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
           : ""}
       </p>
 
-      {phase !== "complete" && (
+      {phase !== "complete" && phase !== "play" && (
         <section
           aria-label="Interval setup"
           className="mx-auto w-full max-w-3xl space-y-6 border border-ds-section bg-ds-page px-4 py-8 text-center sm:px-10"
         >
           <div className="flex flex-wrap justify-center gap-6">
-            <NumberInput label="Minutes" value={minutes} min={0} max={999} onChange={setMinutes} disabled={phase === "play"} />
+            <NumberInput label="Minutes" value={minutes} min={0} max={999} onChange={setMinutes} />
             <NumberInput
               label="Seconds"
               value={secondsPart}
               min={0}
               max={59}
               onChange={setSecondsPart}
-              disabled={phase === "play"}
             />
-            <NumberInput label="Rings" value={rings} min={1} max={500} onChange={setRings} disabled={phase === "play"} />
+            <NumberInput label="Rings" value={rings} min={1} max={500} onChange={setRings} />
           </div>
-          <VariabilitySlider value={variabilityPct} onChange={setVariabilityPct} disabled={phase === "play"} />
+          <VariabilitySlider value={variabilityPct} onChange={setVariabilityPct} />
           <div className="flex gap-3 justify-center flex-wrap">
-            <ControlButton
-              aria-label="Generate schedule"
-              variant="secondary"
-              disabled={phase === "play"}
-              onClick={regenerate}
-            >
+            <ControlButton aria-label="Generate schedule" variant="secondary" onClick={regenerate}>
               {scheduleMs ? "Regenerate" : "Generate schedule"}
             </ControlButton>
-            {scheduleMs && phase === "setup" && (
+            {scheduleMs && (
               <ControlButton aria-label="Start interval session" onClick={beginPlayback}>
                 Start
               </ControlButton>
             )}
           </div>
 
-          {scheduleMs && phase === "setup" && <SchedulePreview intervalsMs={scheduleMs} />}
+          {scheduleMs && (
+            <div className="mt-8 border-t border-ds-divider pt-8">
+              <IntervalSchedulePanel intervalsMs={scheduleMs} variant="embedded" />
+            </div>
+          )}
         </section>
       )}
 
-      {phase === "play" && (
-        <section aria-label="Playback" className="flex flex-col items-center gap-6 text-center">
+      {phase === "play" && sched.length > 0 && (
+        <section aria-label="Playback" className="flex flex-col items-center gap-8 text-center">
           <CircularProgress progress={progressed} flashing={flashRing} reducedMotion={prefersReducedMotion}>
             {ringDisplay}
           </CircularProgress>
+
+          <div className="w-full max-w-3xl px-1">
+            <IntervalSchedulePanel
+              intervalsMs={sched}
+              activeIndex={currentIndex}
+              remainingMs={remainingMs}
+            />
+          </div>
 
           <ControlsRow>
             <ControlButton
               aria-label={running ? "Pause" : "Resume"}
               onClick={() => {
+                primeAudioFromUserGesture();
                 if (running) pausePlayback();
                 else resumePlayback();
                 persistTick();
@@ -393,8 +419,42 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
             >
               {running ? "Pause" : "Resume"}
             </ControlButton>
-            <ControlButton aria-label="Stop session" variant="secondary" onClick={stopSession}>
+            <ControlButton
+              aria-label="Stop session"
+              variant="secondary"
+              onClick={() => {
+                primeAudioFromUserGesture();
+                stopSession();
+              }}
+            >
               Stop
+            </ControlButton>
+          </ControlsRow>
+        </section>
+      )}
+
+      {phase === "play" && sched.length === 0 && (
+        <section
+          aria-label="Recovery"
+          className="mx-auto w-full max-w-3xl space-y-4 border border-ds-section bg-ds-page px-4 py-8 sm:px-10"
+        >
+          <p className="text-sm text-ds-body">
+            This session had no saved rings. Go back to setup to generate a schedule.
+          </p>
+          <ControlsRow>
+            <ControlButton
+              aria-label="Back to interval setup"
+              onClick={() => {
+                ctr.pause();
+                ctr.reset(0);
+                setPhase("setup");
+                indexRef.current = 0;
+                setCurrentIndex(0);
+                segmentsStartWallRef.current = null;
+                persistTick();
+              }}
+            >
+              Back to setup
             </ControlButton>
           </ControlsRow>
         </section>

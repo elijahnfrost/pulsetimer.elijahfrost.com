@@ -4,7 +4,7 @@ import { MutableRefObject, useCallback, useEffect, useRef, useState } from "reac
 import { ShortcutHandles } from "@/types/hotkeys";
 import { formatMmSs } from "@/lib/formatTime";
 import { useAccurateTimer } from "@/hooks/useAccurateTimer";
-import { useAudioAlert } from "@/hooks/useAudioAlert";
+import { primeAudioFromUserGesture, useAudioAlert } from "@/hooks/useAudioAlert";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { CircularProgress } from "./CircularProgress";
 import { ControlButton, ControlsRow } from "./Controls";
@@ -71,7 +71,7 @@ export function StandardTimer({ actionsRef, onActivityChange }: Props) {
   }, [h, mm, ss, mode, isRunning, ctr]);
 
   const finish = useCallback(() => {
-    playChime();
+    playChime("timerComplete");
     if (!prefersReducedMotion) {
       setFlash(true);
       window.setTimeout(() => setFlash(false), 300);
@@ -140,6 +140,7 @@ export function StandardTimer({ actionsRef, onActivityChange }: Props) {
   }, [isRunning, mode, onActivityChange]);
 
   const start = () => {
+    primeAudioFromUserGesture();
     ctr.reset(targetMs);
     setMode("running");
     ctr.start();
@@ -163,6 +164,7 @@ export function StandardTimer({ actionsRef, onActivityChange }: Props) {
           reset();
           return;
         }
+        primeAudioFromUserGesture();
         if (isRunning) pause();
         else start();
       },
