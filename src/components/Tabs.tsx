@@ -26,17 +26,12 @@ export function Tabs({ active, onChange }: Props) {
             aria-selected={isActive}
             id={`tab-${id}`}
             className={
-              `flex-1 px-3 py-3 transition-colors duration-ds sm:px-4 ` +
-              `outline-none border border-transparent focus-visible:border-ds-hover ` +
+              `flex-1 px-5 pb-0 pt-3.5 transition-colors duration-ds sm:px-7 sm:pt-4 ` +
+              `outline-none border-0 border-b-2 focus-visible:border-ds-hover ` +
               `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] ` +
               (isActive
-                ? "bg-transparent text-ds-fg"
-                : "bg-transparent text-ds-soft hover:text-ds-fg hover:bg-transparent")
-            }
-            style={
-              isActive
-                ? { boxShadow: "inset 0 -2px 0 0 var(--color-fg)" }
-                : { boxShadow: "none" }
+                ? "border-ds-fg bg-transparent text-ds-fg"
+                : "border-transparent bg-transparent text-ds-soft hover:text-ds-fg hover:bg-transparent")
             }
             onClick={() => onChange(id)}
           >

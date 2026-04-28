@@ -46,8 +46,15 @@ export function ControlButton({
 
 type RowProps = {
   children: ReactNode;
+  className?: string;
 };
 
-export function ControlsRow({ children }: RowProps) {
-  return <div className="flex flex-wrap items-center justify-center gap-3">{children}</div>;
+export function ControlsRow({ children, className = "" }: RowProps) {
+  return (
+    <div
+      className={["flex flex-wrap items-center justify-center gap-3", className].filter(Boolean).join(" ")}
+    >
+      {children}
+    </div>
+  );
 }

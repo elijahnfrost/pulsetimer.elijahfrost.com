@@ -7,7 +7,6 @@ import { formatMmSs, formatRingRemainingLine } from "@/lib/formatTime";
 import { useAccurateTimer } from "@/hooks/useAccurateTimer";
 import { primeAudioFromUserGesture, useAudioAlert } from "@/hooks/useAudioAlert";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
-import { CircularProgress } from "./CircularProgress";
 import { ControlButton, ControlsRow } from "./Controls";
 import { NumberInput } from "./NumberInput";
 import { IntervalSchedulePanel } from "./IntervalSchedulePanel";
@@ -81,6 +80,11 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
 
   const [remainingMs, running, ctr] = useAccurateTimer(() => onSegmentCompleteRef.current());
 
+  const remainingMsRef = useRef(remainingMs);
+  remainingMsRef.current = remainingMs;
+  const runningRef = useRef(running);
+  runningRef.current = running;
+
   const persistTick = useCallback(() => {
     const intervals =
       intervalsRef.current.length > 0 ? intervalsRef.current : scheduleMs ?? [];
@@ -97,8 +101,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     } else if (playing && intervals.length > 0) {
       resume = {
         index: indexRef.current,
-        segmentDeadlineTs: running ? ctr.getSegmentEndTs() : null,
-        pausedRemainMs: running ? null : remainingMs,
+        segmentDeadlineTs: runningRef.current ? ctr.getSegmentEndTs() : null,
+        pausedRemainMs: runningRef.current ? null : remainingMsRef.current,
         actualMs: actualSegments.slice(),
       };
     }
@@ -112,18 +116,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       phase,
       resume,
     });
-  }, [
-    minutes,
-    secondsPart,
-    rings,
-    variabilityPct,
-    scheduleMs,
-    phase,
-    running,
-    remainingMs,
-    ctr,
-    actualSegments,
-  ]);
+  }, [minutes, secondsPart, rings, variabilityPct, scheduleMs, phase, ctr, actualSegments]);
 
   const persistTickRef = useRef(persistTick);
   persistTickRef.current = persistTick;
@@ -299,11 +292,6 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     persistTick();
   };
 
-  const segmentDurationMs =
-    intervalsRef.current[currentIndex] ?? scheduleMs?.[currentIndex] ?? remainingMs ?? 1;
-  const safeSeg = Math.max(1, segmentDurationMs || 1);
-  const progressed = 1 - Math.min(1, Math.max(0, remainingMs) / safeSeg);
-
   const sched = scheduleMs ?? intervalsRef.current;
   const totalRemainingAcross =
     sched.reduce((acc, ms, i) => {
@@ -329,8 +317,6 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     segmentsStartWallRef.current = null;
     persistTick();
   };
-
-  const ringDisplay = `${formatMmSs(Math.max(0, remainingMs))}`;
 
   useEffect(() => {
     onActivityChange?.(phase === "play" && running);
@@ -408,42 +394,43 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       )}
 
       {phase === "play" && sched.length > 0 && (
-        <section aria-label="Playback" className="flex flex-col items-center gap-8 text-center">
-          <CircularProgress progress={progressed} flashing={flashRing} reducedMotion={prefersReducedMotion}>
-            {ringDisplay}
-          </CircularProgress>
+        <section
+          aria-label="Playback"
+          className="mx-auto mb-[max(0rem,env(safe-area-inset-bottom))] flex w-full max-w-3xl flex-col pb-2 text-center"
+        >
+          <IntervalSchedulePanel
+            intervalsMs={sched}
+            activeIndex={currentIndex}
+            remainingMs={remainingMs}
+            flashActive={flashRing}
+            prefersReducedMotion={prefersReducedMotion}
+          />
 
-          <div className="w-full max-w-3xl px-1">
-            <IntervalSchedulePanel
-              intervalsMs={sched}
-              activeIndex={currentIndex}
-              remainingMs={remainingMs}
-            />
+          <div className="sticky bottom-2 z-[1] mt-6 w-full border-t border-ds-divider bg-ds-page/95 px-0 py-4 backdrop-blur-sm supports-[backdrop-filter]:bg-ds-page/85 supports-[backdrop-filter]:backdrop-blur-md sm:relative sm:bottom-auto sm:z-0 sm:mt-8 sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:backdrop-blur-none">
+            <ControlsRow className="w-full flex-col gap-3 [&>button]:w-full [&>button]:max-w-none sm:flex-row sm:flex-wrap sm:[&>button]:w-auto">
+              <ControlButton
+                aria-label={running ? "Pause" : "Resume"}
+                onClick={() => {
+                  primeAudioFromUserGesture();
+                  if (running) pausePlayback();
+                  else resumePlayback();
+                  persistTick();
+                }}
+              >
+                {running ? "Pause" : "Resume"}
+              </ControlButton>
+              <ControlButton
+                aria-label="Stop session"
+                variant="secondary"
+                onClick={() => {
+                  primeAudioFromUserGesture();
+                  stopSession();
+                }}
+              >
+                Stop
+              </ControlButton>
+            </ControlsRow>
           </div>
-
-          <ControlsRow>
-            <ControlButton
-              aria-label={running ? "Pause" : "Resume"}
-              onClick={() => {
-                primeAudioFromUserGesture();
-                if (running) pausePlayback();
-                else resumePlayback();
-                persistTick();
-              }}
-            >
-              {running ? "Pause" : "Resume"}
-            </ControlButton>
-            <ControlButton
-              aria-label="Stop session"
-              variant="secondary"
-              onClick={() => {
-                primeAudioFromUserGesture();
-                stopSession();
-              }}
-            >
-              Stop
-            </ControlButton>
-          </ControlsRow>
         </section>
       )}
 

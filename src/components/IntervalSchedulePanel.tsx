@@ -1,113 +1,121 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useMemo } from "react";
 import { formatMmSs } from "@/lib/formatTime";
-
-type SuccessionVariant = "past" | "current" | "upcoming";
-
-function SuccessionCard({
-  label,
-  ringNum,
-  durationMs,
-  variant,
-  subline,
-}: {
-  label: string;
-  ringNum: number | null;
-  durationMs: number | null;
-  variant: SuccessionVariant;
-  subline?: string;
-}) {
-  const shell =
-    variant === "current"
-      ? "z-[1] scale-[1.04] border-ds-bright/40 bg-ds-page shadow-[0_8px_30px_-12px_rgba(0,0,0,0.35)] ring-1 ring-ds-bright/20 dark:shadow-[0_8px_34px_-10px_rgba(0,0,0,0.55)]"
-      : variant === "past"
-        ? "scale-[0.94] border-ds-divider/90 bg-ds-page/55 opacity-[0.78]"
-        : "scale-[0.94] border-ds-divider bg-ds-page/75 opacity-90";
-
-  return (
-    <div
-      className={`rounded-2xl border px-3 py-3 text-center transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] sm:px-4 sm:py-3.5 ${shell}`}
-    >
-      <p className="text-[10px] font-normal uppercase tracking-[0.2em] text-ds-soft">{label}</p>
-      {ringNum == null ? (
-        <p className="mt-3 text-sm text-ds-muted">—</p>
-      ) : (
-        <>
-          <p className="mt-2 text-xs text-ds-muted">Ring {ringNum}</p>
-          <p
-            className={`mt-1 font-mono text-lg tabular-nums tracking-tight sm:text-xl ${
-              variant === "current" ? "text-ds-bright" : "text-ds-fg"
-            }`}
-          >
-            {formatMmSs(Math.max(0, durationMs ?? 0))}
-          </p>
-          {subline ? <p className="mt-1 text-[11px] text-ds-dim">{subline}</p> : null}
-        </>
-      )}
-    </div>
-  );
-}
-
-function dockTransform(i: number, focusIndex: number | null): {
-  scale: number;
-  opacity: number;
-  z: number;
-  y: number;
-  rotY: number;
-} {
-  if (focusIndex === null) {
-    return { scale: 0.9, opacity: 0.78, z: 1, y: 0, rotY: 0 };
-  }
-  const d = Math.abs(i - focusIndex);
-  const scale = d === 0 ? 1.12 : d === 1 ? 0.86 : Math.max(0.66, 1 - d * 0.12);
-  const opacity = d === 0 ? 1 : d === 1 ? 0.72 : Math.max(0.38, 0.85 - d * 0.16);
-  const z = 24 - d;
-  const y = d === 0 ? -8 : 0;
-  const rotY = Math.max(-14, Math.min(14, (i - focusIndex) * -9));
-  return { scale, opacity, z, y, rotY };
-}
 
 type Props = {
   intervalsMs: number[];
   activeIndex?: number | null;
   remainingMs?: number;
   variant?: "standalone" | "embedded";
+  flashActive?: boolean;
+  prefersReducedMotion?: boolean;
 };
+
+function statusLabel(playing: boolean, i: number, activeIndex: number): "Done" | "Now" | "Next" | null {
+  if (!playing) return null;
+  if (i < activeIndex) return "Done";
+  if (i === activeIndex) return "Now";
+  if (i === activeIndex + 1) return "Next";
+  return null;
+}
+
+type RingRowProps = {
+  ringIndex: number;
+  plannedMs: number;
+  displayTime: string;
+  slab: "Done" | "Now" | "Next" | null;
+  isCurrent: boolean;
+  isPast: boolean;
+  rowFlash: boolean;
+};
+
+const RingRow = memo(function RingRow({
+  ringIndex,
+  plannedMs,
+  displayTime,
+  slab,
+  isCurrent,
+  isPast,
+  rowFlash,
+}: RingRowProps) {
+  return (
+    <div
+      role="listitem"
+      data-schedule-ring={ringIndex}
+      aria-current={isCurrent ? "step" : undefined}
+      className={[
+        "relative px-2 py-3.5 transition-[background-color,opacity] duration-200 ease-ds-out sm:px-3 sm:py-4",
+        "hover:bg-ds-section/40",
+        isPast ? "opacity-70" : "",
+        rowFlash ? "bg-ds-section/50" : isCurrent ? "bg-ds-section/25" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <p className="text-[10px] font-normal uppercase tracking-[0.18em] text-ds-soft">
+          {slab ? (
+            <>
+              {slab} <span className="text-ds-muted">·</span> Ring {ringIndex + 1}
+            </>
+          ) : (
+            <>Ring {ringIndex + 1}</>
+          )}
+        </p>
+        <p
+          className={`font-mono tabular-nums tracking-tight transition-colors duration-200 ease-ds-out ${
+            isCurrent
+              ? "text-[clamp(1.5rem,min(7.5vmin,8vw),2.1rem)] leading-tight text-ds-bright"
+              : "text-lg text-ds-fg sm:text-xl"
+          }`}
+        >
+          {displayTime}
+        </p>
+        {isCurrent && plannedMs > 0 ? (
+          <p className="text-[11px] text-ds-dim">Planned {formatMmSs(plannedMs)}</p>
+        ) : null}
+        {isPast ? <p className="text-[11px] text-ds-dim">Planned {formatMmSs(plannedMs)}</p> : null}
+      </div>
+    </div>
+  );
+});
 
 export function IntervalSchedulePanel({
   intervalsMs,
   activeIndex = null,
   remainingMs = 0,
   variant = "standalone",
+  flashActive = false,
+  prefersReducedMotion = false,
 }: Props) {
   const playing = typeof activeIndex === "number" && activeIndex >= 0;
-  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-
-  const focusIndex = useMemo(() => {
-    if (hoverIndex !== null) return hoverIndex;
-    if (playing) return activeIndex;
-    return null;
-  }, [hoverIndex, playing, activeIndex]);
 
   const total = intervalsMs.reduce((a, b) => a + b, 0);
   const n = intervalsMs.length;
-  const idx = playing ? activeIndex! : 0;
-  const prevIdx = idx - 1;
-  const nextIdx = idx + 1;
-  const prevMs = prevIdx >= 0 ? intervalsMs[prevIdx]! : null;
-  const nextMs = nextIdx < n ? intervalsMs[nextIdx]! : null;
-  const plannedCurrent = intervalsMs[idx] ?? 0;
 
+  const elapsedPlannedMs = useMemo(() => {
+    if (!playing || activeIndex == null || intervalsMs.length === 0) return 0;
+    const idx = activeIndex;
+    const before = intervalsMs.slice(0, idx).reduce((a, b) => a + b, 0);
+    const planned = intervalsMs[idx] ?? 0;
+    const remaining = Math.max(0, remainingMs);
+    const consumed = Math.min(planned, Math.max(0, planned - remaining));
+    return before + consumed;
+  }, [playing, activeIndex, intervalsMs, remainingMs]);
+
+  const progress =
+    total > 0 ? Math.min(100, Math.max(0, (elapsedPlannedMs / total) * 100)) : 0;
+
+  /** Instant scroll avoids fights with countdown updates and reads smoother than smooth scroll. */
   useEffect(() => {
-    if (hoverIndex !== null) return;
     if (!playing) return;
     const id = window.requestAnimationFrame(() => {
       const el = document.querySelector(`[data-schedule-ring="${String(activeIndex)}"]`);
-      el?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+      el?.scrollIntoView({ block: "center", behavior: "auto" });
     });
     return () => cancelAnimationFrame(id);
-  }, [playing, activeIndex, hoverIndex]);
+  }, [playing, activeIndex]);
 
   const embedded = variant === "embedded";
 
@@ -117,7 +125,7 @@ export function IntervalSchedulePanel({
         embedded ? "border-0 bg-transparent px-0 py-0" : "border border-ds-section bg-ds-page px-4 py-5 sm:px-8"
       }`}
     >
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:text-left">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-6 sm:text-left">
         <h2 className="text-sm font-normal leading-snug text-ds-fg">
           {playing ? "Your run" : "Schedule"}
           <span className="text-ds-muted">
@@ -125,78 +133,61 @@ export function IntervalSchedulePanel({
             · {n} ring{n === 1 ? "" : "s"}
           </span>
         </h2>
-        <p className="font-mono text-xs tabular-nums text-ds-muted">{formatMmSs(total)} planned</p>
+
+        {playing ? (
+          <div className="flex w-full min-w-0 flex-col gap-2.5 sm:max-w-[min(100%,20rem)] sm:items-end">
+            <p
+              className="font-mono text-xs tabular-nums text-ds-muted sm:text-right"
+              aria-label={`Elapsed ${formatMmSs(elapsedPlannedMs)} of ${formatMmSs(total)} total`}
+            >
+              {formatMmSs(elapsedPlannedMs)} <span className="text-ds-dim">/</span> {formatMmSs(total)}
+            </p>
+            <div
+              className="h-0.5 w-full overflow-hidden rounded-full bg-ds-divider"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(progress)}
+              aria-valuetext={`${formatMmSs(elapsedPlannedMs)} elapsed of ${formatMmSs(total)}`}
+            >
+              <div className="h-full rounded-full bg-ds-bright/35" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        ) : (
+          <p className="font-mono text-xs tabular-nums text-ds-muted">{formatMmSs(total)} planned</p>
+        )}
       </div>
 
-      {playing ? (
-        <div className="mt-6 grid gap-3 sm:grid-cols-3 sm:gap-4 sm:items-stretch">
-          <SuccessionCard label="Before" ringNum={prevIdx >= 0 ? prevIdx + 1 : null} durationMs={prevMs} variant="past" />
-          <SuccessionCard
-            label="Now"
-            ringNum={idx + 1}
-            durationMs={remainingMs}
-            variant="current"
-            subline={plannedCurrent > 0 ? `Planned ${formatMmSs(plannedCurrent)}` : undefined}
-          />
-          <SuccessionCard
-            label="After"
-            ringNum={nextIdx < n ? nextIdx + 1 : null}
-            durationMs={nextMs}
-            variant="upcoming"
-          />
-        </div>
-      ) : null}
+      <div
+        className={`mt-6 overflow-y-auto overscroll-y-contain [scrollbar-width:thin] ${
+          embedded ? "max-h-[min(45vh,340px)] sm:max-h-[380px]" : "max-h-[min(62vh,560px)] sm:max-h-[620px]"
+        }`}
+        role="list"
+        aria-label={playing ? "Ring timeline for this session" : "Generated ring durations"}
+      >
+        <div className="border-b border-ds-divider divide-y divide-ds-divider text-left">
+          {intervalsMs.map((plannedMs, i) => {
+            const isCurrent = playing && i === activeIndex;
+            const isPast = playing && i < activeIndex;
+            const slab =
+              playing && activeIndex != null ? statusLabel(playing, i, activeIndex) : null;
 
-      <div className="mt-6">
-        <p className="mb-1 text-[10px] uppercase tracking-[0.22em] text-ds-soft">
-          {playing ? "Timeline" : "All rings"}
-        </p>
-        <p className="mb-4 text-[11px] text-ds-dim">Hover a ring to bring it forward</p>
-        <div
-          className="relative overflow-x-auto overflow-y-visible py-8 [scrollbar-width:thin]"
-          style={{ perspective: "1100px" }}
-          onPointerLeave={() => setHoverIndex(null)}
-        >
-          <div
-            role="list"
-            aria-label={playing ? "Ring order for this session" : "Generated ring durations"}
-            className="mx-auto flex w-max max-w-full min-h-[5.5rem] items-end justify-center gap-1 px-3 sm:gap-2 sm:px-6"
-            style={{ transformStyle: "preserve-3d" }}
-          >
-            {intervalsMs.map((ms, i) => {
-              const { scale, opacity, z, y, rotY } = dockTransform(i, focusIndex);
-              const isCurrent = playing && i === activeIndex;
-              const isPast = playing && i < (activeIndex as number);
+            const durationShown =
+              isCurrent && playing ? Math.max(0, remainingMs ?? 0) : Math.max(0, plannedMs);
 
-              return (
-                <div
-                  key={`${i}-${ms}`}
-                  role="listitem"
-                  data-schedule-ring={i}
-                  aria-current={isCurrent ? "step" : undefined}
-                  onPointerEnter={() => setHoverIndex(i)}
-                  className={`relative flex min-w-[4.5rem] shrink-0 cursor-default select-none flex-col rounded-xl border px-2.5 py-2 text-left transition-[border-color,box-shadow] duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] sm:min-w-[5.5rem] sm:px-3 sm:py-2.5 ${
-                    isCurrent && hoverIndex === null
-                      ? "border-ds-bright/35 shadow-[0_0_0_1px_rgba(255,255,255,0.05)]"
-                      : "border-ds-divider"
-                  } ${isPast ? "bg-ds-page/45" : "bg-ds-page/85"}`}
-                  style={{
-                    transform: `translateY(${y}px) rotateY(${rotY}deg) scale(${scale})`,
-                    opacity,
-                    zIndex: z,
-                    transition: "transform 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 220ms ease-out",
-                  }}
-                >
-                  <span className="pointer-events-none text-[9px] font-normal uppercase tracking-[0.16em] text-ds-soft">
-                    Ring {i + 1}
-                  </span>
-                  <span className="pointer-events-none mt-0.5 font-mono text-xs tabular-nums text-ds-fg sm:text-sm">
-                    {formatMmSs(ms)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+            return (
+              <RingRow
+                key={`${i}-${plannedMs}`}
+                ringIndex={i}
+                plannedMs={plannedMs}
+                displayTime={formatMmSs(durationShown)}
+                slab={slab}
+                isCurrent={isCurrent}
+                isPast={isPast}
+                rowFlash={Boolean(isCurrent && flashActive && !prefersReducedMotion)}
+              />
+            );
+          })}
         </div>
       </div>
     </div>

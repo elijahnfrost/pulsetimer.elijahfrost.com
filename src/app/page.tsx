@@ -112,17 +112,22 @@ export default function Home() {
   return (
     <div className="flex min-h-[100dvh] flex-col bg-ds-page text-ds-fg">
       <header className="sticky top-0 z-10 border-b border-ds-divider bg-ds-page/90 backdrop-blur-sm">
-        <div className="relative mx-auto flex w-full max-w-6xl items-center justify-center px-5 py-8 sm:px-10">
-          <div className="mx-auto w-full max-w-2xl px-12 text-center sm:px-16">
-            <h1 className="font-serif text-2xl font-light tracking-tight text-ds-fg sm:text-[1.75rem]">
-              Pulse Timer
-            </h1>
-            <p className="mt-2 text-[10px] uppercase tracking-[0.22em] text-ds-soft sm:tracking-[0.24em]">
-              Interval · timer · stopwatch — offline in your browser
-            </p>
-          </div>
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 sm:right-8">
-            <ThemeToggle />
+        <div className="mx-auto flex w-full max-w-6xl items-start justify-center px-4 py-6 sm:px-10 sm:py-8">
+          <div
+            className="grid w-full max-w-2xl grid-cols-[minmax(2.25rem,1fr)_minmax(0,auto)_minmax(2.25rem,1fr)] items-start gap-x-2 sm:grid-cols-[minmax(2.5rem,1fr)_minmax(0,auto)_minmax(2.5rem,1fr)] sm:gap-x-3"
+          >
+            <span className="col-start-1 select-none" aria-hidden />
+            <div className="col-start-2 min-w-0 text-center">
+              <h1 className="font-serif text-2xl font-light tracking-tight text-ds-fg sm:text-[1.75rem]">
+                Pulse Timer
+              </h1>
+              <p className="mt-2 text-[10px] uppercase tracking-[0.22em] text-ds-soft sm:tracking-[0.24em]">
+                Interval · timer · stopwatch — offline in your browser
+              </p>
+            </div>
+            <div className="col-start-3 flex justify-end pt-0.5 sm:pt-1">
+              <ThemeToggle />
+            </div>
           </div>
         </div>
       </header>
