@@ -35,7 +35,7 @@ export function Tabs({ active, onChange }: Props) {
             }
             onClick={() => onChange(id)}
           >
-            <span className="block text-[9px] uppercase tracking-[0.2em] sm:text-[10px] sm:tracking-[0.22em]">{label}</span>
+            <span className="block text-[10px] uppercase tracking-[0.15em] sm:text-[11px] sm:tracking-[0.16em]">{label}</span>
           </button>
         );
       })}

@@ -21,18 +21,17 @@ export function IntervalSoundPanel({
   className = "",
 }: Props) {
   return (
-    <div
-      className={`flex w-full flex-col gap-4 pt-2 sm:flex-row sm:items-end sm:justify-center sm:gap-8 ${className}`}
-    >
+    <div className={`flex w-full flex-col gap-5 sm:flex-row sm:items-end sm:justify-start sm:gap-8 ${className}`}>
       <NumberInput
+        className="shrink-0"
         label="Beeps"
         value={chimeRepeats}
         min={1}
         max={12}
         onChange={onChimeRepeatsChange}
       />
-      <div className="flex w-full min-w-0 flex-col gap-2 text-left sm:w-auto sm:max-w-sm sm:flex-1 lg:max-w-md">
-        <div className="flex min-h-[1rem] flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[10px] uppercase tracking-[0.18em] text-ds-soft sm:tracking-[0.2em]">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 text-left lg:max-w-md">
+        <div className="flex min-h-[1rem] flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] uppercase tracking-[0.14em] text-ds-soft sm:tracking-[0.16em]">
           <label htmlFor="chime-volume-slider" className="shrink-0">
             Volume
           </label>

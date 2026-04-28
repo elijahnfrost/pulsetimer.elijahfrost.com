@@ -2,8 +2,10 @@
 
 import { MutableRefObject, useEffect, useRef, useState } from "react";
 import { ShortcutHandles } from "@/types/hotkeys";
-import { formatElapsedWithMs } from "@/lib/formatTime";
+import { formatElapsedWithMs, splitElapsedForStopwatch } from "@/lib/formatTime";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ControlButton, ControlsRow } from "./Controls";
+import { StopwatchFracCrossfade } from "./StopwatchFracCrossfade";
 
 const STORAGE_KEY = "pulse-timer:stopwatch-v1";
 
@@ -48,6 +50,7 @@ type Props = {
 };
 
 export function Stopwatch({ actionsRef, onActivityChange }: Props) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const [elapsedMs, setElapsedMs] = useState(0);
   const [running, setRunning] = useState(false);
   const [laps, setLaps] = useState<Lap[]>([]);
@@ -66,7 +69,7 @@ export function Stopwatch({ actionsRef, onActivityChange }: Props) {
       setLaps(s.laps ?? []);
       const e = nowElapsed(pausedOffsetRef.current, lapAnchorRef.current);
       setElapsedMs(e);
-      lastRoundedRef.current = Math.floor(e / 10);
+      lastRoundedRef.current = Math.floor(e / 10) * 10;
     }
     setHydrated(true);
   }, []);
@@ -162,14 +165,19 @@ export function Stopwatch({ actionsRef, onActivityChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [actionsRef, running]);
 
+  const { steady, frac } = splitElapsedForStopwatch(Math.max(0, elapsedMs));
+
   return (
-    <div className="mx-auto mt-8 w-full space-y-8 text-center transition-opacity duration-ds ease-ds-out">
-      <section aria-label="Stopwatch" className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8 sm:px-10">
-        <div
-          className="tabular-nums-display mx-auto w-full max-w-4xl px-2 text-center text-ds-fg"
-          aria-live="polite"
-        >
-          {formatElapsedWithMs(Math.max(0, elapsedMs))}
+    <div className="mx-auto mt-8 w-full text-center transition-opacity duration-ds ease-ds-out">
+      <section aria-label="Stopwatch" className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-10 sm:px-10">
+        <div className="tabular-nums-display mx-auto w-full max-w-4xl px-2 text-ds-fg">
+          <span className="sr-only" aria-live="polite">
+            {formatElapsedWithMs(Math.max(0, elapsedMs))}
+          </span>
+          <span aria-hidden className="inline-flex items-baseline justify-center">
+            <span className="tabular-nums">{steady}</span>
+            <StopwatchFracCrossfade frac={frac} reducedMotion={prefersReducedMotion} />
+          </span>
         </div>
 
         <ControlsRow>
@@ -185,8 +193,8 @@ export function Stopwatch({ actionsRef, onActivityChange }: Props) {
         </ControlsRow>
 
         {laps.length > 0 ? (
-          <div className="mx-auto max-h-48 max-w-2xl overflow-y-auto border border-ds-divider p-4 text-center">
-            <ol className="space-y-2 font-mono text-sm text-ds-fg">
+          <div className="mx-auto max-h-48 max-w-2xl overflow-y-auto rounded-sm border border-ds-divider px-5 py-4 text-center">
+            <ol className="space-y-2.5 font-mono text-[0.9375rem] leading-snug tracking-tight text-ds-fg">
               {laps.map((l, idx) => (
                 <li key={`${idx}-${l.cumulativeMs}`}>
                   Lap {idx + 1}: {formatElapsedWithMs(l.lapMs)} · total {formatElapsedWithMs(l.cumulativeMs)}

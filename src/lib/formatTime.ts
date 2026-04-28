@@ -34,6 +34,20 @@ export function formatElapsedWithMs(ms: number): string {
   return `${pad2(m)}:${pad2(s)}.${String(frac).padStart(2, "0")}`;
 }
 
+/** Split for animating fractional digits without re-rendering the stable clock portion. */
+export function splitElapsedForStopwatch(ms: number): {
+  steady: string;
+  frac: string;
+} {
+  const line = formatElapsedWithMs(ms);
+  const dot = line.lastIndexOf(".");
+  if (dot < 0) return { steady: line, frac: "" };
+  return {
+    steady: line.slice(0, dot + 1),
+    frac: line.slice(dot + 1),
+  };
+}
+
 /** Status line fragment: Ring k of N · MM:SS remaining. */
 export function formatRingRemainingLine(
   ringOneBased: number,

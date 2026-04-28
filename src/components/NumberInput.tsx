@@ -16,6 +16,8 @@ type Props = {
    * fill: fills parent width — stacked + / value / − (for equal columns, e.g. interval session row).
    */
   layout?: "compact" | "fill";
+  /** Only applies when `layout` is `"fill"`. Default center. */
+  labelAlign?: "center" | "start";
   /** Extra classes on the outer wrapper */
   className?: string;
   /**
@@ -54,6 +56,7 @@ export function NumberInput({
   disableDec,
   disableInc,
   layout = "compact",
+  labelAlign = "center",
   className = "",
 }: Props) {
   const [textDraft, setTextDraft] = useState<string | null>(null);
@@ -141,7 +144,7 @@ export function NumberInput({
         .join(" ")}
     >
       <span
-        className={`text-[10px] uppercase tracking-[0.2em] text-ds-soft sm:text-[10px] sm:tracking-[0.22em] ${fill ? "block w-full text-center" : ""}`}
+        className={`text-[11px] uppercase tracking-[0.14em] text-ds-soft sm:tracking-[0.16em] ${fill ? (labelAlign === "start" ? "block w-full text-left" : "block w-full text-center") : ""}`}
       >
         {label}
       </span>

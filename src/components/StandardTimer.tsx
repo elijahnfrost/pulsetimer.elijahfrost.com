@@ -186,12 +186,12 @@ export function StandardTimer({ actionsRef, onActivityChange }: Props) {
     mode === "done" ? 1 : showTargetWhileIdle ? 0 : 1 - Math.min(1, Math.max(0, remainingMs) / targetMs);
 
   return (
-    <div className="mt-8 w-full space-y-8 text-center transition-opacity duration-ds ease-ds-out">
+    <div className="mt-10 w-full text-center transition-opacity duration-ds ease-ds-out">
       <section
         aria-label="Standard countdown"
-        className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8 text-center sm:px-10"
+        className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-10 text-center sm:px-10"
       >
-        <div className="flex flex-wrap justify-center gap-6">
+        <div className="flex flex-wrap justify-center gap-x-8 gap-y-6">
           <NumberInput label="Hours" value={h} min={0} max={999} onChange={setH} disabled={isRunning} />
           <NumberInput
             label="Minutes"
