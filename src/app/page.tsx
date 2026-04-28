@@ -138,30 +138,36 @@ export default function Home() {
           />
         </div>
 
-        <div
-          role="tabpanel"
-          aria-labelledby={`tab-${tab}`}
-          key={tab}
-          className="w-full max-w-5xl flex-1 transition-opacity duration-ds ease-ds-out"
-        >
-          {tab === "interval" && (
+        {/* Keep panels mounted so tab switches never reset in-memory state or flash defaults */}
+        <div className="w-full max-w-5xl flex-1 transition-opacity duration-ds ease-ds-out">
+          <div
+            role="tabpanel"
+            id="tabpanel-interval"
+            aria-labelledby="tab-interval"
+            hidden={tab !== "interval"}
+          >
             <IntervalTimer
               actionsRef={hkInterval}
               onActivityChange={(active) => setIntervalAwake(Boolean(active))}
             />
-          )}
-          {tab === "timer" && (
+          </div>
+          <div role="tabpanel" id="tabpanel-timer" aria-labelledby="tab-timer" hidden={tab !== "timer"}>
             <StandardTimer
               actionsRef={hkStandard}
               onActivityChange={(active) => setStandardAwake(Boolean(active))}
             />
-          )}
-          {tab === "stopwatch" && (
+          </div>
+          <div
+            role="tabpanel"
+            id="tabpanel-stopwatch"
+            aria-labelledby="tab-stopwatch"
+            hidden={tab !== "stopwatch"}
+          >
             <Stopwatch
               actionsRef={hkStopwatch}
               onActivityChange={(active) => setStopwatchAwake(Boolean(active))}
             />
-          )}
+          </div>
         </div>
 
         <footer className="mt-auto w-full max-w-3xl border-t border-ds-divider pt-10 text-center">
