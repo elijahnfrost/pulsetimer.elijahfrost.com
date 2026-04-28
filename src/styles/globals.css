@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --pulse-bg: #0a0a0f;
+  --pulse-surface: #14141f;
+  --pulse-border: #1e1e2e;
+  --pulse-text: #e8e8ed;
+  --pulse-text-secondary: #6b6b7b;
+  --pulse-accent: #6c63ff;
+  --pulse-alert: #ff6b6b;
+  --pulse-success: #4ade80;
+}
+
+@layer base {
+  body {
+    @apply min-h-[100dvh] bg-pulse-bg text-pulse-text antialiased;
+    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .tabular-nums-light {
+    font-variant-numeric: tabular-nums;
+    font-weight: 300;
+    font-size: clamp(3rem, 8vw, 6rem);
+    line-height: 1;
+  }
+
+  .focus-ring {
+    @apply outline-none ring-2 ring-pulse-accent ring-offset-2 ring-offset-pulse-bg;
+  }
+}
+
+@layer components {
+  .variability-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    @apply rounded-full bg-pulse-border w-full cursor-pointer;
+  }
+  .variability-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    @apply appearance-none rounded-full shadow-accent-glow;
+    width: 20px;
+    height: 20px;
+    margin-top: -8px;
+    background-color: var(--pulse-accent);
+  }
+  .variability-slider::-moz-range-thumb {
+    @apply rounded-full border-0 shadow-accent-glow;
+    width: 20px;
+    height: 20px;
+    background-color: var(--pulse-accent);
+  }
+  .variability-slider::-moz-range-track {
+    @apply rounded-full bg-pulse-border;
+    height: 4px;
+  }
+}
