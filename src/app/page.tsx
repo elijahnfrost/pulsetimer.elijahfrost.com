@@ -120,7 +120,7 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col items-stretch px-5 pb-10 pt-2 text-center sm:px-10">
+      <main className="mx-auto flex min-w-0 w-full max-w-6xl flex-1 flex-col items-stretch px-5 pb-10 pt-2 text-center sm:px-10">
         <div className="w-full">
           <Tabs
             active={tab}
@@ -132,7 +132,7 @@ export default function Home() {
         </div>
 
         {/* Keep panels mounted so tab switches never reset in-memory state or flash defaults */}
-        <div className="w-full max-w-6xl flex-1 transition-opacity duration-ds ease-ds-out">
+        <div className="w-full min-w-0 max-w-6xl flex-1 transition-opacity duration-ds ease-ds-out">
           <div
             role="tabpanel"
             id="tabpanel-interval"

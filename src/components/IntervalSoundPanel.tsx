@@ -35,7 +35,7 @@ export function IntervalSoundPanel({
           <label htmlFor="chime-volume-slider" className="shrink-0">
             Volume
           </label>
-          <span className="shrink-0 font-mono tabular-nums" aria-live="polite">
+          <span className="ml-1 shrink-0 font-mono tabular-nums" aria-live="polite">
             {chimeVolumePct}%
           </span>
         </div>

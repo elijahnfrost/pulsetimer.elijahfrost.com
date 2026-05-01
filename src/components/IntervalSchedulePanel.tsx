@@ -5,9 +5,13 @@ import { formatMmSs } from "@/lib/formatTime";
 
 type Props = {
   intervalsMs: number[];
+  /** Optional label per ring (e.g. A–F); omit or shorter array to skip labels for some rings. */
+  phaseLabels?: string[];
   activeIndex?: number | null;
   remainingMs?: number;
   variant?: "standalone" | "embedded";
+  /** When embedded, let the scroll area grow to fill the column (parent should use flex/grid stretch). */
+  fillHeight?: boolean;
   flashActive?: boolean;
   prefersReducedMotion?: boolean;
 };
@@ -22,6 +26,7 @@ function statusLabel(playing: boolean, i: number, activeIndex: number): "Done" |
 
 type RingRowProps = {
   ringIndex: number;
+  phaseLabel?: string;
   displayTime: string;
   slab: "Done" | "Now" | "Next" | null;
   isCurrent: boolean;
@@ -31,12 +36,21 @@ type RingRowProps = {
 
 const RingRow = memo(function RingRow({
   ringIndex,
+  phaseLabel,
   displayTime,
   slab,
   isCurrent,
   isPast,
   rowFlash,
 }: RingRowProps) {
+  const phaseSuffix =
+    phaseLabel && phaseLabel.length > 0 ? (
+      <>
+        {" "}
+        <span className="text-ds-muted">·</span> {phaseLabel}
+      </>
+    ) : null;
+
   return (
     <div
       role="listitem"
@@ -56,9 +70,13 @@ const RingRow = memo(function RingRow({
           {slab ? (
             <>
               {slab} <span className="text-ds-muted">·</span> Ring {ringIndex + 1}
+              {phaseSuffix}
             </>
           ) : (
-            <>Ring {ringIndex + 1}</>
+            <>
+              Ring {ringIndex + 1}
+              {phaseSuffix}
+            </>
           )}
         </p>
         <p
@@ -154,9 +172,11 @@ function runScrollAnimation(
 
 export function IntervalSchedulePanel({
   intervalsMs,
+  phaseLabels,
   activeIndex = null,
   remainingMs = 0,
   variant = "standalone",
+  fillHeight = false,
   flashActive = false,
   prefersReducedMotion = false,
 }: Props) {
@@ -250,14 +270,28 @@ export function IntervalSchedulePanel({
   ]);
 
   const embedded = variant === "embedded";
+  const stretchList = embedded && fillHeight;
 
   return (
     <div
-      className={`mx-auto w-full max-w-3xl text-center ${
-        embedded ? "border-0 bg-transparent px-0 py-0" : "px-4 py-5 sm:px-8"
-      }`}
+      className={[
+        stretchList
+          ? "flex h-full min-h-0 w-full min-w-0 flex-1 flex-col text-left"
+          : "mx-auto w-full max-w-3xl text-center",
+        embedded && !stretchList ? "border-0 bg-transparent px-0 py-0" : "",
+        !embedded ? "px-4 py-5 sm:px-8" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
     >
-      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-3 sm:text-left">
+      <div
+        className={[
+          "flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-3 sm:text-left",
+          stretchList ? "shrink-0 border-b border-ds-divider/50 pb-2 sm:pb-2.5" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <h2 className="text-sm font-normal leading-snug text-ds-fg">
           {playing ? "Your run" : "Schedule"}
           <span className="text-ds-muted">
@@ -281,7 +315,14 @@ export function IntervalSchedulePanel({
         )}
       </div>
 
-      <div className="relative mt-3 sm:mt-4">
+      <div
+        className={[
+          "relative mt-3 sm:mt-4",
+          stretchList ? "flex min-h-0 flex-1 flex-col" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+      >
         <div
           className={[
             "pointer-events-none absolute inset-x-0 top-0 z-[1] h-14 bg-gradient-to-b from-ds-page to-transparent transition-opacity duration-ds ease-ds-out",
@@ -292,11 +333,14 @@ export function IntervalSchedulePanel({
         <div
           ref={listScrollRef}
           onScroll={updateScrollFades}
-          className={`overflow-y-auto overscroll-y-contain [scrollbar-width:thin] ${
-            embedded
-              ? "max-h-[min(58vh,480px)] sm:max-h-[min(76vh,640px)]"
-              : "max-h-[min(68vh,620px)] sm:max-h-[min(82vh,720px)]"
-          }`}
+          className={[
+            "min-h-0 min-w-0 overflow-y-auto overscroll-y-contain [scrollbar-width:thin] [-webkit-overflow-scrolling:touch]",
+            stretchList
+              ? "min-h-0 min-w-0 flex-1 basis-0"
+              : embedded
+                ? "max-h-[min(58vh,480px)] sm:max-h-[min(76vh,640px)]"
+                : "max-h-[min(68vh,620px)] sm:max-h-[min(82vh,720px)]",
+          ].join(" ")}
           role="list"
           aria-label={playing ? "Ring timeline for this session" : "Generated ring durations"}
         >
@@ -310,10 +354,13 @@ export function IntervalSchedulePanel({
               const durationShown =
                 isCurrent && playing ? Math.max(0, remainingMs ?? 0) : Math.max(0, plannedMs);
 
+              const phaseLabel = phaseLabels?.[i];
+
               return (
                 <RingRow
                   key={`${i}-${plannedMs}`}
                   ringIndex={i}
+                  phaseLabel={phaseLabel}
                   displayTime={formatMmSs(durationShown)}
                   slab={slab}
                   isCurrent={isCurrent}
