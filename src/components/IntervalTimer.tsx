@@ -24,7 +24,13 @@ import { ControlButton, ControlsRow } from "./Controls";
 import { NumberInput } from "./NumberInput";
 import { IntervalSchedulePanel } from "./IntervalSchedulePanel";
 import { IntervalSoundPanel } from "./IntervalSoundPanel";
-import { PatternScheduleEditor, type PatternConstraint, type PatternPhasePersist } from "./PatternScheduleEditor";
+import {
+  PatternScheduleEditor,
+  type PatternConstraint,
+  type PatternPhasePersist,
+} from "./PatternScheduleEditor";
+import { SegmentedControl } from "./SegmentedControl";
+import { SetupSectionTitle } from "./SetupSectionTitle";
 import { VariabilitySlider } from "./VariabilitySlider";
 
 const STORAGE_KEY_V2 = "pulse-timer:interval-v2";
@@ -606,110 +612,104 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
           <div
             className={
               setupIntervals.length
-                ? "lg:grid lg:min-h-0 lg:grid-cols-3 lg:items-start lg:gap-x-10 lg:gap-y-0"
+                ? "lg:grid lg:min-h-0 lg:grid-cols-3 lg:items-start lg:gap-x-12 lg:gap-y-0"
                 : ""
             }
           >
-            <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-8 lg:col-span-1 lg:mx-0 lg:max-w-none">
-              <div
-                className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3"
-                role="tablist"
-                aria-label="Schedule style"
-              >
-                <span className="min-w-0 text-[10px] font-normal uppercase tracking-[0.18em] text-ds-soft">
-                  Style
-                </span>
-                <div className="flex min-w-0 flex-wrap gap-2">
-                  <ControlButton
-                    type="button"
-                    variant={scheduleMode === "pattern" ? "primary" : "secondary"}
-                    className="!min-h-10 !min-w-0 shrink-0 py-2.5 sm:py-3"
-                    aria-selected={scheduleMode === "pattern"}
-                    onClick={() => setScheduleMode("pattern")}
-                  >
-                    Pattern
-                  </ControlButton>
-                  <ControlButton
-                    type="button"
-                    variant={scheduleMode === "random" ? "primary" : "secondary"}
-                    className="!min-h-10 !min-w-0 shrink-0 py-2.5 sm:py-3"
-                    aria-selected={scheduleMode === "random"}
-                    onClick={() => setScheduleMode("random")}
-                  >
-                    Random spread
-                  </ControlButton>
-                </div>
+            <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-10 lg:col-span-2 lg:mx-0 lg:max-w-2xl">
+              <div className="flex flex-col gap-4">
+                <SetupSectionTitle step={1}>Schedule</SetupSectionTitle>
+                <SegmentedControl
+                  label="Schedule type"
+                  showLabel={false}
+                  value={scheduleMode}
+                  options={[
+                    { value: "pattern", label: "Pattern" },
+                    { value: "random", label: "Random spread" },
+                  ]}
+                  onChange={setScheduleMode}
+                />
+
+                {scheduleMode === "pattern" ? (
+                  <div className="mt-4">
+                    <PatternScheduleEditor
+                      slots={patternSlots}
+                      onSlotsChange={setPatternSlots}
+                      patternConstraint={patternConstraint}
+                      onPatternConstraintChange={setPatternConstraint}
+                    />
+                  </div>
+                ) : null}
               </div>
 
-              {scheduleMode === "pattern" && (
-                <PatternScheduleEditor
-                  slots={patternSlots}
-                  onSlotsChange={setPatternSlots}
-                  patternConstraint={patternConstraint}
-                  onPatternConstraintChange={setPatternConstraint}
-                />
-              )}
-
-              <div
-                className={`mx-auto grid w-full min-w-0 max-w-[17.5rem] gap-4 sm:max-w-md sm:gap-5 lg:mx-0 ${
-                  showSessionDuration ? "grid-cols-3" : "grid-cols-1"
-                }`}
-              >
-                {showSessionDuration && (
-                  <>
-                    <NumberInput
-                      layout="fill"
-                      label="Minutes"
-                      value={minutes}
-                      min={0}
-                      max={999}
-                      onChange={(v) => applySessionDuration(v, secondsPart)}
-                    />
-                    <NumberInput
-                      layout="fill"
-                      label="Seconds"
-                      value={secondsPart}
-                      min={0}
-                      max={59}
-                      strictClamp={false}
-                      commitOnBlur
-                      disableDec={minutes * 60 + secondsPart <= 0}
-                      disableInc={minutes * 60 + secondsPart >= MAX_DURATION_TOTAL_SEC}
-                      onChange={(raw) => applySessionDuration(minutes, raw)}
-                    />
-                  </>
-                )}
-                <NumberInput
-                  layout="fill"
-                  label="Rings"
-                  value={rings}
-                  min={1}
-                  max={500}
-                  onChange={setRings}
-                  className={showSessionDuration ? "" : "max-w-[17.5rem] justify-self-center lg:justify-self-start"}
-                />
-              </div>
-
-              {scheduleMode === "random" && (
-                <>
-                  <VariabilitySlider
-                    className="mx-auto w-full lg:mx-0 lg:max-w-none"
-                    value={variabilityPct}
-                    onChange={setVariabilityPct}
+              <div className="flex flex-col gap-4 border-t border-ds-divider pt-10">
+                <SetupSectionTitle step={2}>Session</SetupSectionTitle>
+                <div
+                  className={`grid w-full min-w-0 gap-4 [&>*]:min-w-0 ${
+                    showSessionDuration
+                      ? "max-w-xl grid-cols-1 sm:grid-cols-3"
+                      : "max-w-[17.5rem] grid-cols-1 justify-items-start sm:max-w-xs"
+                  }`}
+                >
+                  {showSessionDuration && (
+                    <>
+                      <NumberInput
+                        layout="fill"
+                        label="Minutes"
+                        value={minutes}
+                        min={0}
+                        max={999}
+                        onChange={(v) => applySessionDuration(v, secondsPart)}
+                      />
+                      <NumberInput
+                        layout="fill"
+                        label="Seconds"
+                        value={secondsPart}
+                        min={0}
+                        max={59}
+                        strictClamp={false}
+                        commitOnBlur
+                        disableDec={minutes * 60 + secondsPart <= 0}
+                        disableInc={minutes * 60 + secondsPart >= MAX_DURATION_TOTAL_SEC}
+                        onChange={(raw) => applySessionDuration(minutes, raw)}
+                      />
+                    </>
+                  )}
+                  <NumberInput
+                    layout="fill"
+                    label="Rings"
+                    value={rings}
+                    min={1}
+                    max={500}
+                    onChange={setRings}
+                    className={showSessionDuration ? "min-w-0" : "w-full min-w-0"}
                   />
-                  <ControlButton
-                    type="button"
-                    variant="secondary"
-                    className="mx-auto !min-h-10 w-full max-w-md py-3 lg:mx-0 lg:max-w-none"
-                    onClick={() => {
-                      primeAudioFromUserGesture();
-                      setShuffleNonce((n) => n + 1);
-                    }}
-                  >
-                    New shuffle
-                  </ControlButton>
-                </>
-              )}
+                </div>
+
+                {scheduleMode === "random" && (
+                  <div className="mt-6 flex flex-col gap-3 border-t border-ds-divider pt-8">
+                    <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-ds-soft sm:text-[11px] sm:tracking-[0.13em]">
+                      Spread
+                    </p>
+                    <VariabilitySlider
+                      className="w-full max-w-md lg:mx-0"
+                      value={variabilityPct}
+                      onChange={setVariabilityPct}
+                    />
+                    <ControlButton
+                      type="button"
+                      variant="secondary"
+                      className="!min-h-10 w-full max-w-xs py-3 lg:mx-0"
+                      onClick={() => {
+                        primeAudioFromUserGesture();
+                        setShuffleNonce((n) => n + 1);
+                      }}
+                    >
+                      New shuffle
+                    </ControlButton>
+                  </div>
+                )}
+              </div>
 
               {setupScheduleError && (
                 <p
@@ -720,27 +720,33 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 </p>
               )}
 
-              <IntervalSoundPanel
-                className="lg:justify-start lg:pt-0"
-                chimeRepeats={chimeRepeats}
-                onChimeRepeatsChange={(v) => {
-                  chimeRepeatsRef.current = v;
-                  setChimeRepeats(v);
-                }}
-                chimeVolumePct={chimeVolumePct}
-                onChimeVolumeChange={(v) => {
-                  chimeVolumePctRef.current = v;
-                  setChimeVolumePct(v);
-                }}
-              />
-              <div className="mx-auto flex w-full max-w-md flex-col gap-3 lg:mx-0 lg:max-w-none">
+              <div className="flex flex-col gap-4 border-t border-ds-divider pt-10">
+                <SetupSectionTitle step={3}>Sound</SetupSectionTitle>
+                <IntervalSoundPanel
+                  className="max-w-md lg:justify-start lg:pt-0"
+                  chimeRepeats={chimeRepeats}
+                  onChimeRepeatsChange={(v) => {
+                    chimeRepeatsRef.current = v;
+                    setChimeRepeats(v);
+                  }}
+                  chimeVolumePct={chimeVolumePct}
+                  onChimeVolumeChange={(v) => {
+                    chimeVolumePctRef.current = v;
+                    setChimeVolumePct(v);
+                  }}
+                />
+              </div>
+              <div className="mx-auto flex w-full max-w-md flex-col gap-3 border-t border-ds-divider pt-10 lg:mx-0 lg:max-w-sm">
                 <ControlButton
-                  className="!min-w-0 w-full py-4"
+                  className="!min-w-0 w-full gap-2 py-4 text-[11px] tracking-[0.14em] sm:text-xs sm:tracking-[0.16em]"
                   aria-label="Start interval session"
                   disabled={!schedulePreview.ok}
                   onClick={beginPlayback}
                 >
-                  Start
+                  <span aria-hidden className="inline-block translate-y-px text-[0.65em] opacity-90">
+                    ▶
+                  </span>
+                  Start session
                 </ControlButton>
               </div>
             </div>
@@ -751,9 +757,9 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   "mt-8 flex min-h-0 min-w-0 flex-col border-t border-ds-divider pt-6",
                   /* Viewport-capped height → list scrolls inside, not via page body */
                   "h-[min(68dvh,calc(100dvh-12rem))] max-h-[calc(100dvh-12rem)]",
-                  "lg:col-span-2 lg:mt-0 lg:sticky lg:top-[max(0.75rem,calc(5.25rem+env(safe-area-inset-top)))] lg:z-10 lg:self-start",
+                  "lg:col-span-1 lg:mt-0 lg:sticky lg:top-[max(0.75rem,calc(5.25rem+env(safe-area-inset-top)))] lg:z-10 lg:self-start",
                   "lg:h-[calc(100dvh-6.5rem)] lg:max-h-[calc(100dvh-6.5rem)]",
-                  "lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0",
+                  "lg:border-t-0 lg:pl-4 lg:pt-0",
                 ].join(" ")}
               >
                 <IntervalSchedulePanel
@@ -773,9 +779,9 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
           aria-label="Playback"
           className="mx-auto mb-[max(0.5rem,env(safe-area-inset-bottom))] w-full min-w-0 max-w-6xl px-4 py-10 sm:px-10"
         >
-          <div className="lg:grid lg:min-h-0 lg:grid-cols-3 lg:items-start lg:gap-x-10">
-            <div className="order-2 mt-8 flex min-w-0 flex-col gap-8 border-t border-ds-divider pt-8 lg:order-1 lg:col-span-1 lg:mt-0 lg:border-t-0 lg:pr-8 lg:pt-0">
-              <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-8 lg:mx-0">
+          <div className="lg:grid lg:min-h-0 lg:grid-cols-3 lg:items-start lg:gap-x-12">
+            <div className="order-2 mt-8 flex min-w-0 flex-col gap-8 border-t border-ds-divider pt-8 lg:order-1 lg:col-span-2 lg:mt-0 lg:border-t-0 lg:pr-6 lg:pt-0">
+              <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-8 lg:mx-0 lg:max-w-none">
                 <IntervalSoundPanel
                   className="lg:justify-start lg:pt-0"
                   chimeRepeats={chimeRepeats}
@@ -790,9 +796,9 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   }}
                 />
 
-                <div className="flex w-full flex-col gap-3">
+                <div className="flex w-full flex-col gap-3 lg:flex-row lg:gap-4">
                   <ControlButton
-                    className="!min-w-0 w-full py-4"
+                    className="!min-w-0 w-full gap-2 py-4 lg:flex-1"
                     aria-label={running ? "Pause" : "Resume"}
                     onClick={() => {
                       primeAudioFromUserGesture();
@@ -801,10 +807,24 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                       persistTick();
                     }}
                   >
-                    {running ? "Pause" : "Resume"}
+                    {running ? (
+                      <>
+                        <span aria-hidden className="text-[0.95em] opacity-95">
+                          ⏸
+                        </span>
+                        Pause
+                      </>
+                    ) : (
+                      <>
+                        <span aria-hidden className="inline-block translate-y-px text-[0.65em] opacity-90">
+                          ▶
+                        </span>
+                        Resume
+                      </>
+                    )}
                   </ControlButton>
                   <ControlButton
-                    className="!min-w-0 w-full py-4"
+                    className="!min-w-0 w-full gap-2 py-4 lg:flex-1"
                     variant="secondary"
                     aria-label="Stop session"
                     onClick={() => {
@@ -812,6 +832,9 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                       stopSession();
                     }}
                   >
+                    <span aria-hidden className="text-[0.95em]">
+                      ⏹
+                    </span>
                     Stop
                   </ControlButton>
                 </div>
@@ -820,11 +843,11 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
 
             <div
               className={[
-                "order-1 flex min-h-0 min-w-0 flex-col lg:order-2 lg:col-span-2",
+                "order-1 flex min-h-0 min-w-0 flex-col lg:order-2 lg:col-span-1",
                 "h-[min(68dvh,calc(100dvh-12rem))] max-h-[calc(100dvh-12rem)]",
                 "lg:sticky lg:top-[max(0.75rem,calc(5.25rem+env(safe-area-inset-top)))] lg:z-10 lg:self-start",
                 "lg:h-[calc(100dvh-6.5rem)] lg:max-h-[calc(100dvh-6.5rem)]",
-                "lg:border-l lg:border-ds-divider lg:pl-8",
+                "lg:pl-2",
               ].join(" ")}
             >
               <IntervalSchedulePanel

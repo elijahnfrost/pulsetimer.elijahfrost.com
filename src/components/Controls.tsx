@@ -11,18 +11,18 @@ type BtnProps = {
 } & ButtonHTMLAttributes<HTMLButtonElement>;
 
 const primary =
-  `inline-flex min-h-[44px] min-w-[7.5rem] items-center justify-center border border-ds-fg ` +
-  `bg-ds-fg px-5 py-2.5 text-[9px] font-normal uppercase tracking-[0.18em] text-ds-page ` +
-  `transition-all duration-ds hover:opacity-90 ` +
+  `inline-flex min-h-[44px] min-w-[7.5rem] items-center justify-center rounded-md border border-ds-fg ` +
+  `bg-ds-fg px-5 py-2.5 text-[10px] font-medium uppercase tracking-[0.16em] text-ds-page ` +
+  `transition-all duration-ds hover:opacity-90 active:opacity-95 ` +
   `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] ` +
-  `sm:min-h-[44px] sm:px-7 sm:text-[10px] sm:tracking-[0.2em]`;
+  `sm:min-h-[44px] sm:px-7 sm:text-[11px] sm:tracking-[0.14em]`;
 
 const secondary =
-  `inline-flex min-h-[44px] min-w-[7.5rem] items-center justify-center border border-ds-divider ` +
-  `bg-transparent px-5 py-2.5 text-[9px] font-normal uppercase tracking-[0.18em] text-ds-soft ` +
-  `transition-all duration-ds hover:border-ds-border hover:text-ds-fg ` +
+  `inline-flex min-h-[44px] min-w-[7.5rem] items-center justify-center rounded-md border border-ds-divider ` +
+  `bg-transparent px-5 py-2.5 text-[10px] font-medium uppercase tracking-[0.14em] text-ds-soft ` +
+  `transition-all duration-ds hover:border-ds-border hover:bg-ds-section/30 hover:text-ds-fg ` +
   `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] ` +
-  `sm:min-h-[44px] sm:px-7 sm:text-[10px] sm:tracking-[0.18em]`;
+  `sm:min-h-[44px] sm:px-7 sm:text-[11px] sm:tracking-[0.12em]`;
 
 function btnClass(variant: Variant): string {
   return variant === "primary" ? primary : secondary;

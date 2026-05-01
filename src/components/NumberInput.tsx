@@ -38,7 +38,7 @@ type Props = {
 
 const stepperBtnClasses =
   "flex shrink-0 items-center justify-center text-ds-muted transition-colors duration-ds " +
-  "hover:bg-ds-section/30 hover:text-ds-fg disabled:opacity-35 " +
+  "hover:bg-ds-section/45 hover:text-ds-fg active:bg-ds-section/60 disabled:opacity-35 " +
   "focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 " +
   "focus-visible:ring-[var(--color-fg-muted)] focus-visible:ring-offset-2 " +
   "focus-visible:ring-offset-[var(--color-bg-page)]";
@@ -150,10 +150,10 @@ export function NumberInput({
       </span>
 
       {fill ? (
-        <div className="flex min-h-0 min-w-0 w-full flex-col overflow-hidden border border-ds-section bg-ds-page focus-within:border-ds-hover">
+        <div className="flex min-h-0 min-w-0 w-full flex-col overflow-hidden rounded-md border border-ds-section bg-ds-section/15 focus-within:border-ds-hover">
           <button
             type="button"
-            className={`${stepperBtnClasses} h-11 w-full border-b border-ds-divider`}
+            className={`${stepperBtnClasses} min-h-12 w-full border-b border-ds-divider bg-ds-section/20`}
             aria-label={`Increase ${label}`}
             disabled={incDisabled}
             onClick={() => {
@@ -161,12 +161,14 @@ export function NumberInput({
               onChange(strictClamp ? clamp(value + step) : value + step);
             }}
           >
-            +
+            <span className="select-none text-[1.125rem] font-semibold leading-none text-ds-fg" aria-hidden>
+              ▲
+            </span>
           </button>
           {inputEl}
           <button
             type="button"
-            className={`${stepperBtnClasses} h-11 w-full border-t border-ds-divider`}
+            className={`${stepperBtnClasses} min-h-12 w-full border-t border-ds-divider bg-ds-section/20`}
             aria-label={`Decrease ${label}`}
             disabled={decDisabled}
             onClick={() => {
@@ -174,7 +176,9 @@ export function NumberInput({
               onChange(strictClamp ? clamp(value - step) : value - step);
             }}
           >
-            −
+            <span className="select-none text-[1.125rem] font-semibold leading-none text-ds-fg" aria-hidden>
+              ▼
+            </span>
           </button>
         </div>
       ) : (

@@ -15,30 +15,33 @@ type Props = {
 
 export function Tabs({ active, onChange }: Props) {
   return (
-    <div role="tablist" aria-label="Pulse Timer tools" className="relative z-[1] flex w-full border border-ds-border">
-      {TABS.map(({ id, label }) => {
-        const isActive = active === id;
-        return (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            id={`tab-${id}`}
-            className={
-              `flex-1 px-5 pb-0 pt-3.5 transition-colors duration-ds sm:px-7 sm:pt-4 ` +
-              `outline-none border-0 border-b-2 focus-visible:border-ds-hover ` +
-              `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] ` +
-              (isActive
-                ? "border-ds-fg bg-ds-section/55 text-ds-fg"
-                : "border-transparent bg-transparent text-ds-soft hover:text-ds-fg hover:bg-ds-section/25")
-            }
-            onClick={() => onChange(id)}
-          >
-            <span className="block text-[10px] uppercase tracking-[0.15em] sm:text-[11px] sm:tracking-[0.16em]">{label}</span>
-          </button>
-        );
-      })}
-    </div>
+    <nav aria-label="Pulse Timer tools" className="relative z-[1] w-full">
+      <div role="tablist" className="flex w-full flex-wrap gap-2 sm:gap-2.5">
+        {TABS.map(({ id, label }) => {
+          const isActive = active === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              id={`tab-${id}`}
+              className={
+                `min-h-11 flex-1 rounded-md px-3 py-2.5 outline-none transition-colors duration-ds sm:min-h-12 sm:px-5 sm:py-3.5 ` +
+                `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] ` +
+                (isActive
+                  ? "border border-ds-fg bg-ds-fg text-ds-page"
+                  : "border border-ds-divider bg-transparent text-ds-soft hover:border-ds-border hover:bg-ds-section/20 hover:text-ds-fg")
+              }
+              onClick={() => onChange(id)}
+            >
+              <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] sm:text-[12px] sm:tracking-[0.14em]">
+                {label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </nav>
   );
 }

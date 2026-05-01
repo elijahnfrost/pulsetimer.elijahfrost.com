@@ -98,6 +98,17 @@ body {
   line-height: 1.55;
 }
 
+fieldset {
+  margin: 0;
+  min-width: 0;
+  border: none;
+  padding: 0;
+}
+
+legend {
+  padding: 0;
+}
+
 ::selection {
   background-color: var(--color-selection-bg);
   color: var(--color-selection-fg);

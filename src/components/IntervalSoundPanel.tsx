@@ -30,7 +30,7 @@ export function IntervalSoundPanel({
         max={12}
         onChange={onChimeRepeatsChange}
       />
-      <div className="flex min-w-0 flex-1 flex-col gap-2 text-left lg:max-w-md">
+      <div className="flex min-w-0 flex-1 flex-col gap-2 text-left lg:max-w-none">
         <div className="flex min-h-[1rem] flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] uppercase tracking-[0.14em] text-ds-soft sm:tracking-[0.16em]">
           <label htmlFor="chime-volume-slider" className="shrink-0">
             Volume
