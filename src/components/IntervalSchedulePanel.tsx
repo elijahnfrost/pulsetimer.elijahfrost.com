@@ -292,40 +292,59 @@ export function IntervalSchedulePanel({
         .filter(Boolean)
         .join(" ")}
     >
-      <div
-        className={[
-          "flex w-full min-w-0 flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:pb-2.5",
-          stretchList ? "shrink-0" : "",
-        ]
-          .filter(Boolean)
-          .join(" ")}
-      >
-        <h2 className="min-w-0 text-sm font-normal leading-snug text-ds-fg">
-          {playing ? "Your run" : "Schedule"}
-          <span className="text-ds-muted">
-            {n === 1 ? " · 1 ring" : ` · ${n} rings`}
-          </span>
-        </h2>
-
-        <div className="flex min-w-0 flex-col sm:flex-row sm:items-center justify-start gap-x-3 gap-y-3 sm:justify-end sm:gap-x-3 w-full sm:w-auto mt-2 sm:mt-0">
-          {playing ? (
+      {embedded ? (
+        <div className={["flex w-full min-w-0 shrink-0 flex-col gap-2 pb-2 sm:gap-2.5 sm:pb-2.5"].join(" ")}>
+          <div className="min-h-[1.25rem] min-w-0 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <h2 className="whitespace-nowrap pr-2 text-sm font-normal leading-none text-ds-fg">
+              {playing ? "Your run" : "Schedule"}
+              <span className="text-ds-muted">
+                {n === 1 ? " · 1 ring" : ` · ${n} rings`}
+              </span>
+            </h2>
+          </div>
+          {headerEnd ? <div className="w-full min-w-0">{headerEnd}</div> : null}
+          {!headerEnd && playing ? (
             <p
-              className="w-full font-mono text-xs tabular-nums text-ds-muted sm:max-w-[min(100%,20rem)] sm:w-auto sm:text-right"
+              className="font-mono text-xs tabular-nums leading-none text-ds-muted whitespace-nowrap sm:text-sm"
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={100}
               aria-valuenow={Math.round(progress)}
               aria-valuetext={`${formatMmSs(elapsedPlannedMs)} elapsed of ${formatMmSs(total)}`}
             >
-              {formatMmSs(elapsedPlannedMs)} <span className="text-ds-dim">/</span> {formatMmSs(total)}
+              {formatMmSs(elapsedPlannedMs)}
+              <span className="text-ds-dim"> / </span>
+              {formatMmSs(total)}
             </p>
-          ) : (
-            <div className="w-full sm:w-auto">
-              {headerEnd}
-            </div>
-          )}
+          ) : null}
         </div>
-      </div>
+      ) : (
+        <div className={["flex w-full min-w-0 flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:pb-2.5"].join(" ")}>
+          <div className="min-w-0 overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <h2 className="whitespace-nowrap text-sm font-normal leading-none text-ds-fg">
+              {playing ? "Your run" : "Schedule"}
+              <span className="text-ds-muted">
+                {n === 1 ? " · 1 ring" : ` · ${n} rings`}
+              </span>
+            </h2>
+          </div>
+          <div className="mt-1 flex w-full min-w-0 flex-col gap-2 sm:mt-0 sm:flex-row sm:flex-nowrap sm:items-center sm:justify-end sm:gap-x-4">
+            {playing ? (
+              <p
+                className="w-full shrink-0 font-mono text-xs tabular-nums leading-none text-ds-muted whitespace-nowrap sm:w-auto sm:text-right"
+                role="progressbar"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(progress)}
+                aria-valuetext={`${formatMmSs(elapsedPlannedMs)} elapsed of ${formatMmSs(total)}`}
+              >
+                {formatMmSs(elapsedPlannedMs)} <span className="text-ds-dim">/</span> {formatMmSs(total)}
+              </p>
+            ) : null}
+            {headerEnd ? <div className="min-w-0 w-full sm:w-auto sm:max-w-full">{headerEnd}</div> : null}
+          </div>
+        </div>
+      )}
 
       <div
         className={[

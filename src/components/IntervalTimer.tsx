@@ -21,7 +21,14 @@ import {
 import { useAccurateTimer } from "@/hooks/useAccurateTimer";
 import { primeAudioFromUserGesture, useAudioAlert } from "@/hooks/useAudioAlert";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
-import { ControlButton, ControlsRow, controlButtonClasses } from "./Controls";
+import {
+  ControlButton,
+  ControlsRow,
+  scheduleBarPrimaryActionClass,
+  scheduleBarSecondaryActionClass,
+  scheduleHeaderBarShellClass,
+  scheduleHeaderTimeClass,
+} from "./Controls";
 import { BigRow } from "./BigRow";
 import { BigNumber, HmsClock } from "./BigEditors";
 import { IntervalSchedulePanel } from "./IntervalSchedulePanel";
@@ -39,6 +46,72 @@ const CheckIcon = ({ className }: { className?: string }) => (
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
+
+/** Stroke play glyph — aligns with checklist / divider line weight elsewhere. */
+const PlayStrokeIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
+    <path d="M8 5.25v13.5L18.75 12 8 5.25z" />
+  </svg>
+);
+
+const PauseFillIcon = ({ className }: { className?: string }) => (
+  <svg className={className} width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+    <rect x="6" y="5" width="4.75" height="14" rx="1" opacity="0.92" />
+    <rect x="13.25" y="5" width="4.75" height="14" rx="1" opacity="0.92" />
+  </svg>
+);
+
+const StopStrokeIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    width="11"
+    height="11"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.75"
+    aria-hidden
+  >
+    <rect x="7" y="7" width="10" height="10" rx="0.75" />
+  </svg>
+);
+
+function IntervalScheduleHeaderStart({
+  totalMs,
+  disabled,
+  onClick,
+}: {
+  totalMs: number;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <div className={scheduleHeaderBarShellClass}>
+      <button
+        type="button"
+        className={scheduleBarPrimaryActionClass}
+        aria-label="Start interval session"
+        disabled={disabled}
+        onClick={onClick}
+      >
+        <PlayStrokeIcon className="h-[15px] w-[15px] shrink-0 text-ds-soft sm:h-4 sm:w-4" />
+        <span>Start</span>
+      </button>
+      <span className={scheduleHeaderTimeClass}>{formatMmSs(totalMs)}</span>
+    </div>
+  );
+}
 
 function BigOption({ label, title, description, isActive, onClick, borderBottom }: { label: string, title: string, description?: string, isActive: boolean, onClick: () => void, borderBottom?: boolean }) {
   return (
@@ -577,6 +650,26 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       ? phaseLabelsForSchedule(sched.length, patternSlots.length)
       : undefined;
 
+  const sessionPlanTotalMs = useMemo(
+    () => (sched.length === 0 ? 0 : sched.reduce((a, b) => a + b, 0)),
+    [sched],
+  );
+
+  const sessionElapsedPlannedMs = useMemo(() => {
+    if (phase !== "play" || sched.length === 0) return 0;
+    const idx = Math.max(0, Math.min(currentIndex, sched.length - 1));
+    const before = sched.slice(0, idx).reduce((a, b) => a + b, 0);
+    const planned = sched[idx] ?? 0;
+    const remaining = Math.max(0, remainingMs);
+    const consumed = Math.min(planned, Math.max(0, planned - remaining));
+    return before + consumed;
+  }, [phase, sched, currentIndex, remainingMs]);
+
+  const sessionPlanProgressPct =
+    sessionPlanTotalMs > 0
+      ? Math.min(100, Math.max(0, (sessionElapsedPlannedMs / sessionPlanTotalMs) * 100))
+      : 0;
+
   const setupIntervals =
     phase === "setup" && schedulePreview.ok ? schedulePreview.intervalsMs : scheduleMs ?? [];
   const setupPhaseLabels =
@@ -651,13 +744,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
           aria-label="Interval setup"
           className="mx-auto w-full min-w-0 max-w-7xl px-4 py-10 sm:px-10"
         >
-          <div
-            className={
-              setupIntervals.length > 0
-                ? "lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:items-start lg:gap-x-8 lg:gap-y-0 xl:gap-x-12"
-                : "lg:w-full"
-            }
-          >
+          <div className="lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:items-start lg:gap-x-8 lg:gap-y-0 xl:gap-x-12">
             <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-8 sm:max-w-lg lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1">
               <div className="flex flex-col gap-0">
                 <div className="flex flex-col gap-5">
@@ -786,73 +873,33 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   }}
                 />
               </div>
-              {setupIntervals.length === 0 ? (
-                <div className="w-full min-w-0 pt-8">
-                  <div className="mx-auto max-w-md lg:mx-0 lg:max-w-sm">
-                    <button
-                      type="button"
-                      className={`${controlButtonClasses("primary")} flex w-full min-w-[12rem] items-center justify-between rounded-md px-5 py-4`}
-                      aria-label="Start interval session"
-                      disabled={!schedulePreview.ok}
-                      onClick={beginPlayback}
-                    >
-                      <div className="flex items-center gap-3">
-                        <span aria-hidden className="inline-block translate-y-px text-[0.85em] opacity-90">
-                          ▶
-                        </span>
-                        <span className="text-[12px] font-semibold uppercase tracking-[0.16em] sm:text-[13px] sm:tracking-[0.15em]">
-                          Start Session
-                        </span>
-                      </div>
-                      <span className="font-mono text-[14px] font-medium opacity-90 tabular-nums">
-                        {formatMmSs(schedulePreview.ok ? schedulePreview.intervalsMs.reduce((a, b) => a + b, 0) : 0)}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-              ) : null}
             </div>
 
-            {setupIntervals.length > 0 && (
-              <div
-                className={[
-                  "mt-8 flex min-h-0 min-w-0 flex-col border-t border-ds-divider pt-6",
-                  /* Viewport-capped height → list scrolls inside, not via page body */
-                  "h-[min(68dvh,calc(100dvh-12rem))] max-h-[calc(100dvh-12rem)]",
-                  "lg:mt-0 lg:sticky lg:top-[max(0.75rem,calc(5.25rem+env(safe-area-inset-top)))] lg:z-10 lg:self-start",
-                  "lg:h-[calc(100dvh-6.5rem)] lg:max-h-[calc(100dvh-6.5rem)]",
-                  "lg:border-t-0 lg:pl-4 lg:pt-0",
-                ].join(" ")}
-              >
-                <IntervalSchedulePanel
-                  intervalsMs={setupIntervals}
-                  phaseLabels={setupPhaseLabels}
-                  variant="embedded"
-                  fillHeight
-                  headerEnd={
-                    <button
-                      type="button"
-                      className={`${controlButtonClasses("primary")} flex w-full min-w-[12rem] items-center justify-between rounded-md px-4 py-3`}
-                      aria-label="Start interval session"
-                      disabled={!schedulePreview.ok}
-                      onClick={beginPlayback}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span aria-hidden className="inline-block translate-y-px text-[0.75em] opacity-90">
-                          ▶
-                        </span>
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] sm:text-[12px] sm:tracking-[0.15em]">
-                          Start Session
-                        </span>
-                      </div>
-                      <span className="font-mono text-[13px] font-medium opacity-90 tabular-nums">
-                        {formatMmSs(setupIntervals.reduce((a, b) => a + b, 0))}
-                      </span>
-                    </button>
-                  }
-                />
-              </div>
-            )}
+            <div
+              className={[
+                "mt-8 flex min-h-0 min-w-0 flex-col border-t border-ds-divider pt-6",
+                "h-[min(68dvh,calc(100dvh-12rem))] max-h-[calc(100dvh-12rem)]",
+                "lg:mt-0 lg:sticky lg:top-[max(0.75rem,calc(5.25rem+env(safe-area-inset-top)))] lg:z-10 lg:self-start",
+                "lg:h-[calc(100dvh-6.5rem)] lg:max-h-[calc(100dvh-6.5rem)]",
+                "lg:border-t-0 lg:pl-4 lg:pt-0",
+              ].join(" ")}
+            >
+              <IntervalSchedulePanel
+                intervalsMs={setupIntervals}
+                phaseLabels={setupPhaseLabels}
+                variant="embedded"
+                fillHeight
+                headerEnd={
+                  <IntervalScheduleHeaderStart
+                    totalMs={
+                      schedulePreview.ok ? schedulePreview.intervalsMs.reduce((a, b) => a + b, 0) : 0
+                    }
+                    disabled={!schedulePreview.ok}
+                    onClick={beginPlayback}
+                  />
+                }
+              />
+            </div>
           </div>
         </section>
       )}
@@ -860,11 +907,13 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       {phase === "play" && sched.length > 0 && (
         <section
           aria-label="Playback"
-          className="mx-auto mb-[max(0.5rem,env(safe-area-inset-bottom))] w-full min-w-0 max-w-6xl px-4 py-10 sm:px-10"
+          className="mx-auto mb-[max(0.5rem,env(safe-area-inset-bottom))] w-full min-w-0 max-w-7xl px-4 py-10 sm:px-10"
         >
-          <div className="lg:grid lg:min-h-0 lg:grid-cols-3 lg:items-start lg:gap-x-12">
-            <div className="order-2 mt-8 flex min-w-0 flex-col gap-8 border-t border-ds-divider pt-8 lg:order-1 lg:col-span-2 lg:mt-0 lg:border-t-0 lg:pr-6 lg:pt-0">
-              <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-8 lg:mx-0 lg:max-w-none">
+          {/* Same grid as setup — primary column first (sound), schedule second → no holistic jump at start */}
+          <div className="lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:items-start lg:gap-x-8 lg:gap-y-0 xl:gap-x-12">
+            <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-8 sm:max-w-lg lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1">
+              <div className="flex flex-col gap-5">
+                <SetupSubStepTitle notation="1.">While running</SetupSubStepTitle>
                 <IntervalSoundPanel
                   className="lg:justify-start lg:pt-0"
                   chimeRepeats={chimeRepeats}
@@ -878,20 +927,16 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                     setChimeVolumePct(v);
                   }}
                 />
-
-                <div className="flex w-full flex-col gap-3 lg:flex-row lg:gap-4 hidden">
-                  {/* Buttons moved to headerEnd of IntervalSchedulePanel */}
-                </div>
               </div>
             </div>
 
             <div
               className={[
-                "order-1 flex min-h-0 min-w-0 flex-col lg:order-2 lg:col-span-1",
+                "mt-8 flex min-h-0 min-w-0 flex-col border-t border-ds-divider pt-6",
                 "h-[min(68dvh,calc(100dvh-12rem))] max-h-[calc(100dvh-12rem)]",
-                "lg:sticky lg:top-[max(0.75rem,calc(5.25rem+env(safe-area-inset-top)))] lg:z-10 lg:self-start",
+                "lg:mt-0 lg:sticky lg:top-[max(0.75rem,calc(5.25rem+env(safe-area-inset-top)))] lg:z-10 lg:self-start",
                 "lg:h-[calc(100dvh-6.5rem)] lg:max-h-[calc(100dvh-6.5rem)]",
-                "lg:pl-2",
+                "lg:border-t-0 lg:pl-4 lg:pt-0",
               ].join(" ")}
             >
               <IntervalSchedulePanel
@@ -904,61 +949,62 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 variant="embedded"
                 fillHeight
                 headerEnd={
-                  <div className="flex items-center gap-2 w-full min-w-[12rem]">
-                    {running ? (
+                  <div className={scheduleHeaderBarShellClass}>
+                    <div className="flex min-w-0 shrink items-center gap-2 sm:gap-2.5">
+                      {running ? (
+                        <button
+                          type="button"
+                          className={scheduleBarPrimaryActionClass}
+                          aria-label="Pause"
+                          onClick={() => {
+                            primeAudioFromUserGesture();
+                            pausePlayback();
+                            persistTick();
+                          }}
+                        >
+                          <PauseFillIcon className="h-3.5 w-3.5 shrink-0 text-ds-soft sm:h-4 sm:w-4" />
+                          <span>Pause</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className={scheduleBarPrimaryActionClass}
+                          aria-label="Resume"
+                          onClick={() => {
+                            primeAudioFromUserGesture();
+                            resumePlayback();
+                            persistTick();
+                          }}
+                        >
+                          <PlayStrokeIcon className="h-[15px] w-[15px] shrink-0 text-ds-soft sm:h-4 sm:w-4" />
+                          <span>Resume</span>
+                        </button>
+                      )}
                       <button
                         type="button"
-                        className={`${controlButtonClasses("primary")} flex flex-1 items-center justify-center rounded-md px-4 py-3`}
-                        aria-label="Pause"
+                        className={scheduleBarSecondaryActionClass}
+                        aria-label="Stop session"
                         onClick={() => {
                           primeAudioFromUserGesture();
-                          pausePlayback();
-                          persistTick();
+                          stopSession();
                         }}
                       >
-                        <div className="flex items-center gap-2">
-                          <span aria-hidden className="text-[0.85em] opacity-95">
-                            ⏸
-                          </span>
-                          <span className="text-[12px] font-semibold uppercase tracking-[0.16em] sm:text-[13px] sm:tracking-[0.15em]">
-                            Pause
-                          </span>
-                        </div>
+                        <StopStrokeIcon className="h-[15px] w-[15px] shrink-0 text-ds-soft sm:h-4 sm:w-4" />
+                        <span>Stop</span>
                       </button>
-                    ) : (
-                      <button
-                        type="button"
-                        className={`${controlButtonClasses("primary")} flex flex-1 items-center justify-center rounded-md px-4 py-3`}
-                        aria-label="Resume"
-                        onClick={() => {
-                          primeAudioFromUserGesture();
-                          resumePlayback();
-                          persistTick();
-                        }}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span aria-hidden className="inline-block translate-y-px text-[0.85em] opacity-90">
-                            ▶
-                          </span>
-                          <span className="text-[12px] font-semibold uppercase tracking-[0.16em] sm:text-[13px] sm:tracking-[0.15em]">
-                            Resume
-                          </span>
-                        </div>
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className={`${controlButtonClasses("secondary")} flex min-w-0 shrink-0 items-center justify-center px-4 py-3`}
-                      aria-label="Stop session"
-                      onClick={() => {
-                        primeAudioFromUserGesture();
-                        stopSession();
-                      }}
+                    </div>
+                    <p
+                      className={scheduleHeaderTimeClass}
+                      role="progressbar"
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuenow={Math.round(sessionPlanProgressPct)}
+                      aria-valuetext={`${formatMmSs(sessionElapsedPlannedMs)} elapsed of ${formatMmSs(sessionPlanTotalMs)}`}
                     >
-                      <span aria-hidden className="text-[0.95em]">
-                        ⏹
-                      </span>
-                    </button>
+                      {formatMmSs(sessionElapsedPlannedMs)}
+                      <span className="text-ds-dim"> / </span>
+                      {formatMmSs(sessionPlanTotalMs)}
+                    </p>
                   </div>
                 }
               />
