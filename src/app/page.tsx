@@ -113,15 +113,21 @@ export default function Home() {
     <div className="flex min-h-[100dvh] flex-col bg-ds-page text-ds-fg">
       <header className="w-full shrink-0 px-4 pb-6 pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-10 sm:pb-8 sm:pt-8">
         <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
-          <h1 className="font-serif text-xl font-light tracking-tight text-ds-fg sm:text-[1.35rem]">
+          <h1 className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-ds-fg sm:text-[12px] shrink-0">
             Pulse Timer
           </h1>
+          <div className="flex-1 max-w-2xl px-4 hidden md:block">
+            <Tabs
+              active={tab}
+              onChange={(k) => {
+                setActiveTab(k);
+                activeRef.current = k;
+              }}
+            />
+          </div>
           <ThemeToggle />
         </div>
-      </header>
-
-      <main className="mx-auto flex min-w-0 w-full max-w-7xl flex-1 flex-col items-stretch px-5 pb-10 pt-2 text-center font-sans antialiased sm:px-10">
-        <div className="w-full">
+        <div className="w-full mt-6 md:hidden">
           <Tabs
             active={tab}
             onChange={(k) => {
@@ -130,7 +136,9 @@ export default function Home() {
             }}
           />
         </div>
+      </header>
 
+      <main className="mx-auto flex min-w-0 w-full max-w-7xl flex-1 flex-col items-stretch px-5 pb-10 pt-2 text-center font-sans antialiased sm:px-10">
         {/* Keep panels mounted so tab switches never reset in-memory state or flash defaults */}
         <div className="w-full min-w-0 max-w-7xl flex-1 text-left transition-opacity duration-ds ease-ds-out">
           <div

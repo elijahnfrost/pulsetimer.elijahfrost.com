@@ -16,7 +16,7 @@ type Props = {
 export function Tabs({ active, onChange }: Props) {
   return (
     <nav aria-label="Pulse Timer tools" className="relative z-[1] w-full">
-      <div role="tablist" className="flex w-full flex-wrap gap-2 sm:gap-2.5">
+      <div role="tablist" className="flex w-full justify-center sm:justify-start gap-6 sm:gap-10 border-b border-ds-divider/50">
         {TABS.map(({ id, label }) => {
           const isActive = active === id;
           return (
@@ -27,17 +27,20 @@ export function Tabs({ active, onChange }: Props) {
               aria-selected={isActive}
               id={`tab-${id}`}
               className={
-                `min-h-11 flex-1 rounded-md px-3 py-2.5 outline-none transition-colors duration-ds sm:min-h-12 sm:px-5 sm:py-3.5 ` +
-                `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] ` +
+                `relative pb-4 pt-2 outline-none transition-colors duration-ds ` +
+                `focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-fg-muted)] focus-visible:ring-offset-4 focus-visible:ring-offset-[var(--color-bg-page)] rounded-sm ` +
                 (isActive
-                  ? "border border-ds-fg bg-ds-fg text-ds-page"
-                  : "border border-ds-divider bg-transparent text-ds-soft hover:border-ds-border hover:bg-ds-section/20 hover:text-ds-fg")
+                  ? "text-ds-fg"
+                  : "text-ds-soft hover:text-ds-fg")
               }
               onClick={() => onChange(id)}
             >
-              <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] sm:text-[12px] sm:tracking-[0.14em]">
+              <span className={`block text-[11px] uppercase tracking-[0.15em] sm:text-[12px] ${isActive ? "font-medium" : "font-normal"}`}>
                 {label}
               </span>
+              {isActive && (
+                <span className="absolute -bottom-[1px] left-0 right-0 h-[1px] bg-ds-soft" />
+              )}
             </button>
           );
         })}

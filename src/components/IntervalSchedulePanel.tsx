@@ -294,7 +294,7 @@ export function IntervalSchedulePanel({
     >
       <div
         className={[
-          "flex w-full min-w-0 flex-col gap-2 border-b border-ds-divider/50 pb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:pb-2.5",
+          "flex w-full min-w-0 flex-col gap-2 pb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:pb-2.5",
           stretchList ? "shrink-0" : "",
         ]
           .filter(Boolean)
@@ -307,7 +307,7 @@ export function IntervalSchedulePanel({
           </span>
         </h2>
 
-        <div className="flex min-w-0 flex-wrap items-center justify-start gap-x-3 gap-y-2 sm:justify-end sm:gap-x-3">
+        <div className="flex min-w-0 flex-col sm:flex-row sm:items-center justify-start gap-x-3 gap-y-3 sm:justify-end sm:gap-x-3 w-full sm:w-auto mt-2 sm:mt-0">
           {playing ? (
             <p
               className="w-full font-mono text-xs tabular-nums text-ds-muted sm:max-w-[min(100%,20rem)] sm:w-auto sm:text-right"
@@ -320,19 +320,16 @@ export function IntervalSchedulePanel({
               {formatMmSs(elapsedPlannedMs)} <span className="text-ds-dim">/</span> {formatMmSs(total)}
             </p>
           ) : (
-            <>
-              <p className="whitespace-nowrap font-mono text-xs tabular-nums text-ds-muted">
-                {formatMmSs(total)}
-              </p>
+            <div className="w-full sm:w-auto">
               {headerEnd}
-            </>
+            </div>
           )}
         </div>
       </div>
 
       <div
         className={[
-          "relative mt-3 sm:mt-4",
+          "relative mt-1 sm:mt-2",
           stretchList ? "flex min-h-0 flex-1 flex-col" : "",
         ]
           .filter(Boolean)

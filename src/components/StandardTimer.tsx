@@ -8,7 +8,8 @@ import { primeAudioFromUserGesture, useAudioAlert } from "@/hooks/useAudioAlert"
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { CircularProgress } from "./CircularProgress";
 import { ControlButton, ControlsRow } from "./Controls";
-import { NumberInput } from "./NumberInput";
+import { BigRow } from "./BigRow";
+import { HmsClock } from "./BigEditors";
 
 const STORAGE_KEY = "pulse-timer:standard-v1";
 
@@ -191,24 +192,22 @@ export function StandardTimer({ actionsRef, onActivityChange }: Props) {
         aria-label="Standard countdown"
         className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-10 text-center sm:px-10"
       >
-        <div className="flex flex-wrap justify-center gap-x-8 gap-y-6">
-          <NumberInput label="Hours" value={h} min={0} max={999} onChange={setH} disabled={isRunning} />
-          <NumberInput
-            label="Minutes"
-            value={mm}
-            min={0}
-            max={59}
-            onChange={(n) => setMm(((n % 60) + 60) % 60)}
-            disabled={isRunning}
-          />
-          <NumberInput
-            label="Seconds"
-            value={ss}
-            min={0}
-            max={59}
-            onChange={(n) => setSs(((n % 60) + 60) % 60)}
-            disabled={isRunning}
-          />
+        <div className="flex flex-col w-full min-w-0 rounded-sm overflow-hidden border border-ds-divider max-w-md mx-auto">
+          <BigRow label="TMR">
+            <HmsClock
+              phaseLetter="Timer"
+              hours={h}
+              minutes={mm}
+              seconds={ss}
+              onSetHms={(newH, newM, newS) => {
+                if (!isRunning) {
+                  setH(newH);
+                  setMm(newM);
+                  setSs(newS);
+                }
+              }}
+            />
+          </BigRow>
         </div>
 
         <CircularProgress
@@ -227,19 +226,27 @@ export function StandardTimer({ actionsRef, onActivityChange }: Props) {
         </CircularProgress>
 
         <ControlsRow>
-          <ControlButton
-            aria-label={isRunning ? "Pause" : mode === "done" ? "Reset" : "Start"}
-            onClick={() => {
-              if (mode === "done") reset();
-              else if (isRunning) pause();
-              else start();
-            }}
-          >
-            {mode === "done" ? "Reset" : isRunning ? "Pause" : "Start"}
-          </ControlButton>
-          <ControlButton variant="secondary" aria-label="Reset timer" onClick={reset}>
-            Reset
-          </ControlButton>
+          {mode === "idle" ? (
+            <>
+              <ControlButton onClick={start}>Start</ControlButton>
+              <ControlButton variant="secondary" className="invisible pointer-events-none" tabIndex={-1}>Stop</ControlButton>
+            </>
+          ) : isRunning ? (
+            <>
+              <ControlButton onClick={pause}>Pause</ControlButton>
+              <ControlButton variant="secondary" onClick={stop}>Stop</ControlButton>
+            </>
+          ) : mode === "done" ? (
+            <>
+              <ControlButton onClick={reset}>Reset</ControlButton>
+              <ControlButton variant="secondary" className="invisible pointer-events-none" tabIndex={-1}>Stop</ControlButton>
+            </>
+          ) : (
+            <>
+              <ControlButton onClick={start}>Resume</ControlButton>
+              <ControlButton variant="secondary" onClick={stop}>Stop</ControlButton>
+            </>
+          )}
         </ControlsRow>
       </section>
     </div>

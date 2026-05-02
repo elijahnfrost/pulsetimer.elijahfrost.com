@@ -5,6 +5,7 @@ import { ShortcutHandles } from "@/types/hotkeys";
 import { formatElapsedWithMs, splitElapsedForStopwatch } from "@/lib/formatTime";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ControlButton, ControlsRow } from "./Controls";
+import { BigRow } from "./BigRow";
 import { StopwatchFracCrossfade } from "./StopwatchFracCrossfade";
 
 const STORAGE_KEY = "pulse-timer:stopwatch-v1";
@@ -170,14 +171,20 @@ export function Stopwatch({ actionsRef, onActivityChange }: Props) {
   return (
     <div className="mx-auto mt-8 w-full text-center transition-opacity duration-ds ease-ds-out">
       <section aria-label="Stopwatch" className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-10 sm:px-10">
-        <div className="tabular-nums-display mx-auto w-full max-w-4xl px-2 text-ds-fg">
-          <span className="sr-only" aria-live="polite">
-            {formatElapsedWithMs(Math.max(0, elapsedMs))}
-          </span>
-          <span aria-hidden className="inline-flex items-baseline justify-center">
-            <span className="tabular-nums">{steady}</span>
-            <StopwatchFracCrossfade frac={frac} reducedMotion={prefersReducedMotion} />
-          </span>
+        <div className="flex flex-col w-full min-w-0 rounded-sm overflow-hidden border border-ds-divider max-w-md mx-auto">
+          <BigRow label="SW">
+            <div className="flex items-center justify-center w-full pl-2 sm:pl-4">
+              <div className="font-mono text-[clamp(1.6rem,3.8vmin,2.1rem)] font-medium leading-none tracking-[-0.02em] text-ds-fg tabular-nums">
+                <span className="sr-only" aria-live="polite">
+                  {formatElapsedWithMs(Math.max(0, elapsedMs))}
+                </span>
+                <span aria-hidden className="inline-flex items-baseline justify-center">
+                  <span className="tabular-nums">{steady}</span>
+                  <StopwatchFracCrossfade frac={frac} reducedMotion={prefersReducedMotion} />
+                </span>
+              </div>
+            </div>
+          </BigRow>
         </div>
 
         <ControlsRow>

@@ -36,11 +36,11 @@ export function SegmentedControl<T extends string>({
   const chipClasses =
     variant === "crisp"
       ? [
-          "min-h-9 max-w-full rounded-sm px-2.5 py-1.5 text-left text-[10px] font-semibold uppercase leading-snug tracking-[0.1em] transition-colors duration-ds sm:min-h-10 sm:px-3 sm:py-2 sm:text-[11px] sm:tracking-[0.11em]",
+          "min-h-12 max-w-full rounded-sm px-4 py-3 text-left text-[11px] font-semibold uppercase leading-snug tracking-[0.14em] transition-colors duration-ds sm:min-h-[3.25rem] sm:px-5 sm:py-3.5 sm:text-[12px] sm:tracking-[0.15em]",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]",
         ]
       : [
-          "min-h-10 max-w-full rounded-md px-3 py-2 text-left text-[10px] font-medium uppercase leading-snug tracking-[0.08em] transition-colors duration-ds sm:min-h-[2.75rem] sm:px-4 sm:text-[11px] sm:tracking-[0.1em]",
+          "min-h-12 max-w-full rounded-md px-4 py-3 text-left text-[11px] font-medium uppercase leading-snug tracking-[0.12em] transition-colors duration-ds sm:min-h-[3.25rem] sm:px-5 sm:text-[12px] sm:tracking-[0.14em]",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]",
         ];
 

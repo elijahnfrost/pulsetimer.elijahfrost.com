@@ -13,7 +13,6 @@ import {
 } from "@/lib/buildIntervalSchedule";
 import { formatMmSs, formatRingRemainingLine } from "@/lib/formatTime";
 import {
-  MAX_DURATION_TOTAL_SEC,
   normalizeDurationParts,
   normalizeHmsParts,
   totalMsFromHms,
@@ -23,7 +22,8 @@ import { useAccurateTimer } from "@/hooks/useAccurateTimer";
 import { primeAudioFromUserGesture, useAudioAlert } from "@/hooks/useAudioAlert";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { ControlButton, ControlsRow } from "./Controls";
-import { NumberInput } from "./NumberInput";
+import { BigRow } from "./BigRow";
+import { BigNumber, HmsClock } from "./BigEditors";
 import { IntervalSchedulePanel } from "./IntervalSchedulePanel";
 import { IntervalSoundPanel } from "./IntervalSoundPanel";
 import {
@@ -31,9 +31,39 @@ import {
   type PatternConstraint,
   type PatternPhasePersist,
 } from "./PatternScheduleEditor";
-import { SegmentedControl } from "./SegmentedControl";
 import { SetupSubStepTitle } from "./SetupSectionTitle";
 import { VariabilitySlider } from "./VariabilitySlider";
+
+const CheckIcon = ({ className }: { className?: string }) => (
+  <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
+function BigOption({ label, title, description, isActive, onClick, borderBottom }: { label: string, title: string, description?: string, isActive: boolean, onClick: () => void, borderBottom?: boolean }) {
+  return (
+    <BigRow
+      label={label}
+      onClick={onClick}
+      isActive={isActive}
+      borderBottom={borderBottom}
+      rightAction={
+        isActive ? <CheckIcon className="h-6 w-6 text-ds-fg" /> : <div className="h-6 w-6" />
+      }
+    >
+      <div className="flex flex-col gap-1 pl-2 sm:pl-4">
+        <span className={`font-mono text-[clamp(1.1rem,2.5vmin,1.4rem)] uppercase tracking-[0.08em] ${isActive ? "text-ds-fg font-medium" : "text-ds-soft font-light"}`}>
+          {title}
+        </span>
+        {description && (
+          <span className={`text-[10px] sm:text-[11px] uppercase tracking-[0.1em] ${isActive ? "text-ds-soft" : "text-ds-muted"}`}>
+            {description}
+          </span>
+        )}
+      </div>
+    </BigRow>
+  );
+}
 
 const STORAGE_KEY_V2 = "pulse-timer:interval-v2";
 const STORAGE_KEY_V1 = "pulse-timer:interval-v1";
@@ -632,114 +662,78 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
               <div className="flex flex-col gap-0">
                 <div className="flex flex-col gap-5">
                   <SetupSubStepTitle notation="1.">Pattern or random spread</SetupSubStepTitle>
-                  <p className="max-w-xl text-[11px] leading-relaxed text-ds-soft sm:text-xs">
-                    Pattern runs a repeating A→B→… cycle across rings. Random spreads time with jitter per ring — tune it under Session.
-                  </p>
-                  <SegmentedControl
-                    label="Schedule type"
-                    showLabel={false}
-                    variant="crisp"
-                    value={scheduleMode}
-                    options={[
-                      { value: "pattern", label: "Pattern" },
-                      { value: "random", label: "Random spread" },
-                    ]}
-                    onChange={setScheduleMode}
-                  />
+                  <div className="flex flex-col w-full min-w-0 rounded-sm overflow-hidden border border-ds-divider mt-2">
+                    <BigOption
+                      label="PAT"
+                      title="Pattern"
+                      description="Repeating A→B→… cycle"
+                      isActive={scheduleMode === "pattern"}
+                      onClick={() => setScheduleMode("pattern")}
+                      borderBottom
+                    />
+                    <BigOption
+                      label="RND"
+                      title="Random"
+                      description="Jittered time per ring"
+                      isActive={scheduleMode === "random"}
+                      onClick={() => setScheduleMode("random")}
+                    />
+                  </div>
                 </div>
 
                 {scheduleMode === "pattern" ? (
                   <>
-                    <div className="mt-14 flex flex-col gap-4 border-t border-ds-divider pt-14 sm:mt-16 sm:pt-16">
+                    <div className="mt-14 flex flex-col gap-4 pt-14 sm:mt-16 sm:pt-16">
                       <SetupSubStepTitle notation="2.">Scale to session or fixed lengths</SetupSubStepTitle>
-                      <p className="max-w-xl text-[11px] leading-relaxed text-ds-soft sm:text-xs">
-                        Scale-to-session divides your Session total across rings using the weights below.
-                        Fixed means each ring is exactly Min/Sec for that phase until you add rings.
-                      </p>
-                      <SegmentedControl
-                        label="Phase timing mode"
-                        showLabel={false}
-                        variant="crisp"
-                        value={patternConstraint}
-                        options={[
-                          { value: "fitTotal", label: "Scale to session" },
-                          { value: "fixed", label: "Fixed lengths" },
-                        ]}
-                        onChange={setPatternConstraint}
-                      />
+                      <div className="flex flex-col w-full min-w-0 rounded-sm overflow-hidden border border-ds-divider mt-2">
+                        <BigOption
+                          label="FIT"
+                          title="Scale"
+                          description="Divides session total"
+                          isActive={patternConstraint === "fitTotal"}
+                          onClick={() => setPatternConstraint("fitTotal")}
+                          borderBottom
+                        />
+                        <BigOption
+                          label="FIX"
+                          title="Fixed"
+                          description="Exact phase lengths"
+                          isActive={patternConstraint === "fixed"}
+                          onClick={() => setPatternConstraint("fixed")}
+                        />
+                      </div>
                     </div>
 
-                    <div className="mt-14 flex flex-col gap-5 border-t border-ds-divider pt-14 sm:mt-16 sm:gap-6 sm:pt-16">
+                    <div className="mt-14 flex flex-col gap-5 pt-14 sm:mt-16 sm:gap-6 sm:pt-16">
                       <SetupSubStepTitle notation="3.">Phase durations</SetupSubStepTitle>
-                      <div className="flex max-w-xl flex-col gap-2 text-[11px] leading-relaxed text-ds-soft sm:text-xs">
-                        <p>
-                          Rings repeat{" "}
-                          {patternSlots.length <= 1
-                            ? String.fromCharCode(65)
-                            : Array.from({ length: patternSlots.length }, (_, i) =>
-                                String.fromCharCode(65 + i)
-                              ).join(" → ")}
-                          . Preview shows each ring with its letter.
-                        </p>
-                        <p className="text-ds-body sm:text-xs">
-                          {patternConstraint === "fitTotal"
-                            ? "These numbers are weights; Pulse divides your session total across rings."
-                            : "Each ring uses this phase duration; session total grows with ring count."}
-                        </p>
-                      </div>
                       <PatternScheduleEditor slots={patternSlots} onSlotsChange={setPatternSlots} />
                     </div>
                   </>
                 ) : null}
               </div>
 
-              <div className="flex w-full min-w-0 flex-col gap-4 border-t border-ds-divider pt-12 sm:pt-14">
+              <div className="flex w-full min-w-0 flex-col gap-4 pt-12 sm:pt-14">
                 <SetupSubStepTitle notation={`${sessionChapterMark}.`}>Session</SetupSubStepTitle>
-                <div
-                  className={`grid w-full min-w-0 gap-3 sm:gap-4 [&>*]:min-w-0 ${
-                    showSessionDuration
-                      ? "max-w-2xl grid-cols-1 sm:grid-cols-3"
-                      : "max-w-md grid-cols-1"
-                  }`}
-                >
+                <div className="flex flex-col w-full min-w-0 rounded-sm overflow-hidden border border-ds-divider">
                   {showSessionDuration && (
-                    <>
-                      <NumberInput
-                        layout="compact"
-                        stretchCompact
-                        className="min-w-0"
-                        label="Minutes"
-                        value={minutes}
-                        min={0}
-                        max={999}
-                        onChange={(v) => applySessionDuration(v, secondsPart)}
+                    <BigRow label="DUR" borderBottom>
+                      <HmsClock
+                        phaseLetter="Session"
+                        hours={Math.floor(minutes / 60)}
+                        minutes={minutes % 60}
+                        seconds={secondsPart}
+                        onSetHms={(h, m, s) => applySessionDuration(h * 60 + m, s)}
                       />
-                      <NumberInput
-                        layout="compact"
-                        stretchCompact
-                        className="min-w-0"
-                        label="Seconds"
-                        value={secondsPart}
-                        min={0}
-                        max={59}
-                        strictClamp={false}
-                        commitOnBlur
-                        disableDec={minutes * 60 + secondsPart <= 0}
-                        disableInc={minutes * 60 + secondsPart >= MAX_DURATION_TOTAL_SEC}
-                        onChange={(raw) => applySessionDuration(minutes, raw)}
-                      />
-                    </>
+                    </BigRow>
                   )}
-                  <NumberInput
-                    layout="compact"
-                    stretchCompact
-                    className="min-w-0"
-                    label="Rings"
-                    value={rings}
-                    min={1}
-                    max={500}
-                    onChange={setRings}
-                  />
+                  <BigRow label="RNG">
+                    <BigNumber
+                      label="Rings"
+                      value={rings}
+                      unitLabel="Rings"
+                      onChange={setRings}
+                    />
+                  </BigRow>
                 </div>
 
                 {scheduleMode === "random" && (
@@ -755,7 +749,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                     <ControlButton
                       type="button"
                       variant="secondary"
-                      className="!min-h-10 w-full max-w-xs py-3 lg:mx-0"
+                      className="!min-h-12 w-full max-w-xs py-3.5 lg:mx-0"
                       onClick={() => {
                         primeAudioFromUserGesture();
                         setShuffleNonce((n) => n + 1);
@@ -776,7 +770,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 </p>
               )}
 
-              <div className="flex w-full min-w-0 flex-col gap-4 border-t border-ds-divider pt-12 sm:pt-14">
+              <div className="flex w-full min-w-0 flex-col gap-4 pt-12 sm:pt-14">
                 <SetupSubStepTitle notation={`${soundChapterMark}.`}>Sound</SetupSubStepTitle>
                 <IntervalSoundPanel
                   className="max-w-md lg:justify-start lg:pt-0"
@@ -793,19 +787,26 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 />
               </div>
               {setupIntervals.length === 0 ? (
-                <div className="w-full min-w-0 border-t border-ds-divider pt-8">
+                <div className="w-full min-w-0 pt-8">
                   <div className="mx-auto max-w-md lg:mx-0 lg:max-w-sm">
-                    <ControlButton
-                      className="!min-w-0 w-full gap-2 py-4 text-[11px] tracking-[0.14em] sm:text-xs sm:tracking-[0.16em]"
+                    <button
+                      className="flex items-center justify-between w-full min-w-[12rem] rounded-sm bg-ds-fg px-5 py-4 text-ds-page transition-all duration-ds hover:opacity-90 active:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] disabled:pointer-events-none disabled:opacity-50"
                       aria-label="Start interval session"
                       disabled={!schedulePreview.ok}
                       onClick={beginPlayback}
                     >
-                      <span aria-hidden className="inline-block translate-y-px text-[0.65em] opacity-90">
-                        ▶
+                      <div className="flex items-center gap-3">
+                        <span aria-hidden className="inline-block translate-y-px text-[0.85em] opacity-90">
+                          ▶
+                        </span>
+                        <span className="text-[12px] font-semibold uppercase tracking-[0.16em] sm:text-[13px] sm:tracking-[0.15em]">
+                          Start Session
+                        </span>
+                      </div>
+                      <span className="font-mono text-[14px] font-medium opacity-90 tabular-nums">
+                        {formatMmSs(schedulePreview.ok ? schedulePreview.intervalsMs.reduce((a, b) => a + b, 0) : 0)}
                       </span>
-                      Start session
-                    </ControlButton>
+                    </button>
                   </div>
                 </div>
               ) : null}
@@ -828,17 +829,24 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   variant="embedded"
                   fillHeight
                   headerEnd={
-                    <ControlButton
-                      className="!min-h-9 shrink-0 gap-2 !px-3 py-2 text-[10px] tracking-[0.14em] sm:!min-h-10 sm:!px-4 sm:text-[11px] sm:tracking-[0.15em]"
+                    <button
+                      className="flex items-center justify-between w-full min-w-[12rem] rounded-sm bg-ds-fg px-4 py-3 text-ds-page transition-all duration-ds hover:opacity-90 active:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] disabled:pointer-events-none disabled:opacity-50"
                       aria-label="Start interval session"
                       disabled={!schedulePreview.ok}
                       onClick={beginPlayback}
                     >
-                      <span aria-hidden className="inline-block translate-y-px text-[0.65em] opacity-90">
-                        ▶
+                      <div className="flex items-center gap-2">
+                        <span aria-hidden className="inline-block translate-y-px text-[0.75em] opacity-90">
+                          ▶
+                        </span>
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.16em] sm:text-[12px] sm:tracking-[0.15em]">
+                          Start Session
+                        </span>
+                      </div>
+                      <span className="font-mono text-[13px] font-medium opacity-90 tabular-nums">
+                        {formatMmSs(setupIntervals.reduce((a, b) => a + b, 0))}
                       </span>
-                      Start session
-                    </ControlButton>
+                    </button>
                   }
                 />
               </div>
@@ -869,47 +877,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   }}
                 />
 
-                <div className="flex w-full flex-col gap-3 lg:flex-row lg:gap-4">
-                  <ControlButton
-                    className="!min-w-0 w-full gap-2 py-4 lg:flex-1"
-                    aria-label={running ? "Pause" : "Resume"}
-                    onClick={() => {
-                      primeAudioFromUserGesture();
-                      if (running) pausePlayback();
-                      else resumePlayback();
-                      persistTick();
-                    }}
-                  >
-                    {running ? (
-                      <>
-                        <span aria-hidden className="text-[0.95em] opacity-95">
-                          ⏸
-                        </span>
-                        Pause
-                      </>
-                    ) : (
-                      <>
-                        <span aria-hidden className="inline-block translate-y-px text-[0.65em] opacity-90">
-                          ▶
-                        </span>
-                        Resume
-                      </>
-                    )}
-                  </ControlButton>
-                  <ControlButton
-                    className="!min-w-0 w-full gap-2 py-4 lg:flex-1"
-                    variant="secondary"
-                    aria-label="Stop session"
-                    onClick={() => {
-                      primeAudioFromUserGesture();
-                      stopSession();
-                    }}
-                  >
-                    <span aria-hidden className="text-[0.95em]">
-                      ⏹
-                    </span>
-                    Stop
-                  </ControlButton>
+                <div className="flex w-full flex-col gap-3 lg:flex-row lg:gap-4 hidden">
+                  {/* Buttons moved to headerEnd of IntervalSchedulePanel */}
                 </div>
               </div>
             </div>
@@ -932,6 +901,61 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 prefersReducedMotion={prefersReducedMotion}
                 variant="embedded"
                 fillHeight
+                headerEnd={
+                  <div className="flex items-center gap-2 w-full min-w-[12rem]">
+                    {running ? (
+                      <button
+                        className="flex-1 flex items-center justify-center rounded-sm bg-ds-fg px-4 py-3 text-ds-page transition-all duration-ds hover:opacity-90 active:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]"
+                        aria-label="Pause"
+                        onClick={() => {
+                          primeAudioFromUserGesture();
+                          pausePlayback();
+                          persistTick();
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span aria-hidden className="text-[0.85em] opacity-95">
+                            ⏸
+                          </span>
+                          <span className="text-[12px] font-semibold uppercase tracking-[0.16em] sm:text-[13px] sm:tracking-[0.15em]">
+                            Pause
+                          </span>
+                        </div>
+                      </button>
+                    ) : (
+                      <button
+                        className="flex-1 flex items-center justify-center rounded-sm bg-ds-fg px-4 py-3 text-ds-page transition-all duration-ds hover:opacity-90 active:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]"
+                        aria-label="Resume"
+                        onClick={() => {
+                          primeAudioFromUserGesture();
+                          resumePlayback();
+                          persistTick();
+                        }}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span aria-hidden className="inline-block translate-y-px text-[0.85em] opacity-90">
+                            ▶
+                          </span>
+                          <span className="text-[12px] font-semibold uppercase tracking-[0.16em] sm:text-[13px] sm:tracking-[0.15em]">
+                            Resume
+                          </span>
+                        </div>
+                      </button>
+                    )}
+                    <button
+                      className="flex items-center justify-center rounded-sm border border-ds-divider bg-transparent px-4 py-3 text-ds-soft transition-all duration-ds hover:border-ds-border hover:bg-ds-section/20 hover:text-ds-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]"
+                      aria-label="Stop session"
+                      onClick={() => {
+                        primeAudioFromUserGesture();
+                        stopSession();
+                      }}
+                    >
+                      <span aria-hidden className="text-[0.95em]">
+                        ⏹
+                      </span>
+                    </button>
+                  </div>
+                }
               />
             </div>
           </div>
