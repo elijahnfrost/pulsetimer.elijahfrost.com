@@ -30,7 +30,7 @@ import {
   type PatternPhasePersist,
 } from "./PatternScheduleEditor";
 import { SegmentedControl } from "./SegmentedControl";
-import { SetupSectionTitle } from "./SetupSectionTitle";
+import { SetupChapterTitle, SetupSubStepTitle } from "./SetupSectionTitle";
 import { VariabilitySlider } from "./VariabilitySlider";
 
 const STORAGE_KEY_V2 = "pulse-timer:interval-v2";
@@ -612,38 +612,81 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
           <div
             className={
               setupIntervals.length > 0
-                ? "lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:items-start lg:gap-x-10 lg:gap-y-0 xl:gap-x-14"
+                ? "lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:items-start lg:gap-x-8 lg:gap-y-0 xl:gap-x-12"
                 : "lg:w-full"
             }
           >
-            <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-10 sm:max-w-lg lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1">
-              <div className="flex flex-col gap-4">
-                <SetupSectionTitle step={1}>Schedule</SetupSectionTitle>
-                <SegmentedControl
-                  label="Schedule type"
-                  showLabel={false}
-                  value={scheduleMode}
-                  options={[
-                    { value: "pattern", label: "Pattern" },
-                    { value: "random", label: "Random spread" },
-                  ]}
-                  onChange={setScheduleMode}
-                />
+            <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-8 sm:max-w-lg lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1">
+              <div className="flex flex-col gap-0">
+                <SetupChapterTitle roman="I" isFirst>
+                  Schedule
+                </SetupChapterTitle>
+
+                <div className="-mt-2 flex flex-col gap-5 sm:-mt-3">
+                  <SetupSubStepTitle notation="1.">Pattern or random spread</SetupSubStepTitle>
+                  <p className="max-w-xl text-[11px] leading-relaxed text-ds-soft sm:text-xs">
+                    Pattern runs a repeating A→B→… cycle across rings. Random spreads time with jitter per ring — tune it under Session.
+                  </p>
+                  <SegmentedControl
+                    label="Schedule type"
+                    showLabel={false}
+                    variant="crisp"
+                    value={scheduleMode}
+                    options={[
+                      { value: "pattern", label: "Pattern" },
+                      { value: "random", label: "Random spread" },
+                    ]}
+                    onChange={setScheduleMode}
+                  />
+                </div>
 
                 {scheduleMode === "pattern" ? (
-                  <div className="mt-4">
-                    <PatternScheduleEditor
-                      slots={patternSlots}
-                      onSlotsChange={setPatternSlots}
-                      patternConstraint={patternConstraint}
-                      onPatternConstraintChange={setPatternConstraint}
-                    />
-                  </div>
+                  <>
+                    <div className="mt-14 flex flex-col gap-4 border-t border-ds-divider pt-14 sm:mt-16 sm:pt-16">
+                      <SetupSubStepTitle notation="2.">Scale to session or fixed lengths</SetupSubStepTitle>
+                      <p className="max-w-xl text-[11px] leading-relaxed text-ds-soft sm:text-xs">
+                        Scale-to-session divides your Session total across rings using the weights below.
+                        Fixed means each ring is exactly Min/Sec for that phase until you add rings.
+                      </p>
+                      <SegmentedControl
+                        label="Phase timing mode"
+                        showLabel={false}
+                        variant="crisp"
+                        value={patternConstraint}
+                        options={[
+                          { value: "fitTotal", label: "Scale to session" },
+                          { value: "fixed", label: "Fixed lengths" },
+                        ]}
+                        onChange={setPatternConstraint}
+                      />
+                    </div>
+
+                    <div className="mt-14 flex flex-col gap-5 border-t border-ds-divider pt-14 sm:mt-16 sm:gap-6 sm:pt-16">
+                      <SetupSubStepTitle notation="3.">Phase durations</SetupSubStepTitle>
+                      <div className="flex max-w-xl flex-col gap-2 text-[11px] leading-relaxed text-ds-soft sm:text-xs">
+                        <p>
+                          Rings repeat{" "}
+                          {patternSlots.length <= 1
+                            ? String.fromCharCode(65)
+                            : Array.from({ length: patternSlots.length }, (_, i) =>
+                                String.fromCharCode(65 + i)
+                              ).join(" → ")}
+                          . Preview shows each ring with its letter.
+                        </p>
+                        <p className="text-ds-body sm:text-xs">
+                          {patternConstraint === "fitTotal"
+                            ? "These numbers are weights; Pulse divides your session total across rings."
+                            : "Each ring uses this phase duration; session total grows with ring count."}
+                        </p>
+                      </div>
+                      <PatternScheduleEditor slots={patternSlots} onSlotsChange={setPatternSlots} />
+                    </div>
+                  </>
                 ) : null}
               </div>
 
-              <div className="flex flex-col gap-4 border-t border-ds-divider pt-10">
-                <SetupSectionTitle step={2}>Session</SetupSectionTitle>
+              <div className="flex flex-col gap-4">
+                <SetupChapterTitle roman="IV">Session</SetupChapterTitle>
                 <div
                   className={`grid w-full min-w-0 gap-4 [&>*]:min-w-0 ${
                     showSessionDuration
@@ -720,8 +763,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 </p>
               )}
 
-              <div className="flex flex-col gap-4 border-t border-ds-divider pt-10">
-                <SetupSectionTitle step={3}>Sound</SetupSectionTitle>
+              <div className="flex flex-col gap-4">
+                <SetupChapterTitle roman="V">Sound</SetupChapterTitle>
                 <IntervalSoundPanel
                   className="max-w-md lg:justify-start lg:pt-0"
                   chimeRepeats={chimeRepeats}
@@ -736,7 +779,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   }}
                 />
               </div>
-              <div className="mx-auto flex w-full max-w-md flex-col gap-3 border-t border-ds-divider pt-10 lg:mx-0 lg:max-w-sm">
+              <div className="mx-auto flex w-full max-w-md flex-col gap-3 border-t border-ds-divider pt-8 lg:mx-0 lg:max-w-sm">
                 <ControlButton
                   className="!min-w-0 w-full gap-2 py-4 text-[11px] tracking-[0.14em] sm:text-xs sm:tracking-[0.16em]"
                   aria-label="Start interval session"

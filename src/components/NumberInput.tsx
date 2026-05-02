@@ -26,6 +26,8 @@ type Props = {
   narrow?: boolean;
   /** Dense only: fill horizontal space in flex layouts (value field flexes). */
   grow?: boolean;
+  /** Compact row chrome: sharper corners / hairline rhythm (pattern phase editors). */
+  rounding?: "default" | "sharp";
   /**
    * When false, only coerces to a non-negative integer; min/max are not applied to values
    * (use for fields where a parent normalizes overflow, e.g. seconds → minutes).
@@ -67,6 +69,7 @@ export function NumberInput({
   density = "default",
   narrow = false,
   grow = false,
+  rounding = "default",
 }: Props) {
   const [textDraft, setTextDraft] = useState<string | null>(null);
 
@@ -104,21 +107,37 @@ export function NumberInput({
   const fill = layout === "fill";
   const isDense = density === "dense" && !fill;
   const denseGrow = isDense && grow;
+  const sharpCompound = rounding === "sharp" && !fill;
+  const shellRound =
+    fill || !isDense
+      ? "rounded-md"
+      : rounding === "sharp"
+        ? "rounded-sm"
+        : "rounded-md";
+
+  /** Phase-style compounds: keep inner vertical rules so − / value / + read as one framed control. */
+  const innerDivide =
+    isDense && !fill
+      ? sharpCompound
+        ? "border-x border-ds-border "
+        : "border-x border-ds-divider "
+      : "";
 
   const inputClassName =
     `bg-transparent text-center text-ds-fg outline-none transition-colors duration-100 ` +
     `placeholder:text-ds-label [appearance:textfield] focus:border-transparent ` +
     `[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ` +
+    (sharpCompound ? "bg-ds-section/20 " : "") +
     (fill
       ? "h-12 w-full min-w-0 shrink-0 border-0 font-mono text-base tabular-nums sm:text-lg "
       : denseGrow && narrow
-        ? "h-10 min-w-[2.9rem] flex-1 border-x border-ds-divider font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:min-w-[3.2rem] sm:text-[1.0625rem] "
+        ? `h-10 min-w-[2.9rem] flex-1 ${innerDivide}font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:min-w-[3.2rem] sm:text-[1.0625rem] `
         : denseGrow
-          ? "h-10 min-w-[3.4rem] flex-1 border-x border-ds-divider font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:min-w-[3.85rem] sm:text-[1.0625rem] "
+          ? `h-10 min-w-[3.4rem] flex-1 ${innerDivide}font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:min-w-[3.85rem] sm:text-[1.0625rem] `
           : isDense && narrow
-            ? "h-10 w-[3rem] shrink-0 border-x border-ds-divider font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:w-[3.35rem] sm:text-[1.0625rem] "
+            ? `h-10 w-[3rem] shrink-0 ${innerDivide}font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:w-[3.35rem] sm:text-[1.0625rem] `
             : isDense
-              ? "h-10 w-[3.65rem] shrink-0 border-x border-ds-divider font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:w-[4rem] sm:text-[1.0625rem] "
+              ? `h-10 w-[3.65rem] shrink-0 ${innerDivide}font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:w-[4rem] sm:text-[1.0625rem] `
               : "h-12 w-14 shrink-0 border-x border-ds-divider font-mono text-base tabular-nums sm:w-16 sm:text-lg ");
 
   const inputEl = (
@@ -160,8 +179,8 @@ export function NumberInput({
           ? "flex min-w-0 w-full flex-col gap-2"
           : isDense
             ? denseGrow
-              ? "flex min-w-0 w-full flex-col items-stretch gap-1.5"
-              : "flex flex-col items-center gap-1.5"
+              ? "flex min-w-0 w-full flex-col items-stretch gap-3"
+              : "flex flex-col items-center gap-3"
             : "flex flex-col items-center gap-2",
         className,
       ]
@@ -175,7 +194,7 @@ export function NumberInput({
       </span>
 
       {fill ? (
-        <div className="flex min-h-0 min-w-0 w-full flex-col overflow-hidden rounded-md border border-ds-section bg-ds-section/15 focus-within:border-ds-hover">
+        <div className={`flex min-h-0 min-w-0 w-full flex-col overflow-hidden border border-ds-section bg-ds-section/15 focus-within:border-ds-hover ${shellRound}`}>
           <button
             type="button"
             className={`${stepperBtnClasses} min-h-12 w-full border-b border-ds-divider bg-ds-section/20`}
@@ -208,7 +227,7 @@ export function NumberInput({
         </div>
       ) : (
         <div
-          className={`${denseGrow ? "flex w-full min-w-0" : "flex"} overflow-hidden rounded-md bg-ds-page focus-within:border-ds-hover ${isDense ? "border border-ds-divider" : "border border-ds-section"}`}
+          className={`${denseGrow ? "flex w-full min-w-0" : "flex"} overflow-hidden bg-ds-page focus-within:border-ds-hover ${isDense ? `border ${rounding === "sharp" ? "border-2 border-ds-border" : "border border-ds-divider"}` : `border border-ds-section`} ${shellRound}`}
         >
           <button
             type="button"

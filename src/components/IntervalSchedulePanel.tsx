@@ -32,6 +32,7 @@ type RingRowProps = {
   isCurrent: boolean;
   isPast: boolean;
   rowFlash: boolean;
+  compact?: boolean;
 };
 
 const RingRow = memo(function RingRow({
@@ -42,6 +43,7 @@ const RingRow = memo(function RingRow({
   isCurrent,
   isPast,
   rowFlash,
+  compact = false,
 }: RingRowProps) {
   const phaseSuffix =
     phaseLabel && phaseLabel.length > 0 ? (
@@ -57,7 +59,9 @@ const RingRow = memo(function RingRow({
       data-schedule-ring={ringIndex}
       aria-current={isCurrent ? "step" : undefined}
       className={[
-        "relative px-2 py-2.5 transition-[background-color,opacity] duration-200 ease-ds-out sm:px-2.5 sm:py-3",
+        compact
+          ? "relative px-2 py-2 transition-[background-color,opacity] duration-200 ease-ds-out sm:px-2.5 sm:py-2"
+          : "relative px-2 py-2.5 transition-[background-color,opacity] duration-200 ease-ds-out sm:px-2.5 sm:py-3",
         "hover:bg-ds-section/40",
         isPast ? "opacity-70" : "",
         rowFlash ? "bg-ds-section/50" : isCurrent ? "bg-ds-section/25" : "",
@@ -366,6 +370,7 @@ export function IntervalSchedulePanel({
                   isCurrent={isCurrent}
                   isPast={isPast}
                   rowFlash={Boolean(isCurrent && flashActive && !prefersReducedMotion)}
+                  compact={embedded}
                 />
               );
             })}
