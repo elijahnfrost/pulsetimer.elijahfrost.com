@@ -15,6 +15,8 @@ import { formatMmSs, formatRingRemainingLine } from "@/lib/formatTime";
 import {
   MAX_DURATION_TOTAL_SEC,
   normalizeDurationParts,
+  normalizeHmsParts,
+  totalMsFromHms,
   totalMsFromNormalizedParts,
 } from "@/lib/normalizeDurationParts";
 import { useAccurateTimer } from "@/hooks/useAccurateTimer";
@@ -30,7 +32,7 @@ import {
   type PatternPhasePersist,
 } from "./PatternScheduleEditor";
 import { SegmentedControl } from "./SegmentedControl";
-import { SetupChapterTitle, SetupSubStepTitle } from "./SetupSectionTitle";
+import { SetupSubStepTitle } from "./SetupSectionTitle";
 import { VariabilitySlider } from "./VariabilitySlider";
 
 const STORAGE_KEY_V2 = "pulse-timer:interval-v2";
@@ -83,8 +85,8 @@ type PersistShape = {
 
 function defaultPatternSlots(): PatternPhasePersist[] {
   return [
-    { minutes: 5, secondsPart: 0 },
-    { minutes: 2, secondsPart: 0 },
+    { hours: 0, minutes: 5, secondsPart: 0 },
+    { hours: 0, minutes: 2, secondsPart: 0 },
   ];
 }
 
@@ -92,9 +94,15 @@ function normalizePatternSlots(raw: unknown): PatternPhasePersist[] {
   if (!Array.isArray(raw) || raw.length === 0) return defaultPatternSlots();
   const out: PatternPhasePersist[] = [];
   for (let i = 0; i < Math.min(MAX_PATTERN_PHASES, raw.length); i++) {
-    const item = raw[i] as { minutes?: number; secondsPart?: number };
-    const norm = normalizeDurationParts(item?.minutes ?? 0, item?.secondsPart ?? 0);
-    out.push({ minutes: norm.minutes, secondsPart: norm.secondsPart });
+    const item = raw[i] as { hours?: number; minutes?: number; secondsPart?: number };
+    if (typeof item.hours === "number") {
+      out.push(
+        normalizeHmsParts(item.hours, item.minutes ?? 0, item.secondsPart ?? 0)
+      );
+    } else {
+      const norm = normalizeDurationParts(item?.minutes ?? 0, item?.secondsPart ?? 0);
+      out.push(normalizeHmsParts(0, norm.minutes, norm.secondsPart));
+    }
   }
   return out.length > 0 ? out : defaultPatternSlots();
 }
@@ -258,7 +266,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     }
 
     const k = patternSlots.length;
-    const weightsMs = patternSlots.map((s) => totalMsFromNormalizedParts(s.minutes, s.secondsPart));
+    const weightsMs = patternSlots.map((s) => totalMsFromHms(s.hours, s.minutes, s.secondsPart));
 
     if (patternConstraint === "fitTotal") {
       const res = buildPatternScheduleFitTotal(totalMsPlanned, n, weightsMs);
@@ -592,6 +600,10 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   const setupScheduleError = phase === "setup" && !schedulePreview.ok ? schedulePreview.error : null;
   const showSessionDuration = scheduleMode === "random" || patternConstraint === "fitTotal";
 
+  const scheduleSubStepCount = scheduleMode === "pattern" ? 3 : 1;
+  const sessionChapterMark = scheduleSubStepCount + 1;
+  const soundChapterMark = scheduleSubStepCount + 2;
+
   return (
     <div className="mx-auto mt-8 w-full min-w-0 space-y-8 text-left transition-opacity duration-ds ease-ds-out">
       <p className="sr-only" aria-live="polite">
@@ -618,11 +630,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
           >
             <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-8 sm:max-w-lg lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1">
               <div className="flex flex-col gap-0">
-                <SetupChapterTitle roman="I" isFirst>
-                  Schedule
-                </SetupChapterTitle>
-
-                <div className="-mt-2 flex flex-col gap-5 sm:-mt-3">
+                <div className="flex flex-col gap-5">
                   <SetupSubStepTitle notation="1.">Pattern or random spread</SetupSubStepTitle>
                   <p className="max-w-xl text-[11px] leading-relaxed text-ds-soft sm:text-xs">
                     Pattern runs a repeating A→B→… cycle across rings. Random spreads time with jitter per ring — tune it under Session.
@@ -685,19 +693,21 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 ) : null}
               </div>
 
-              <div className="flex flex-col gap-4">
-                <SetupChapterTitle roman="IV">Session</SetupChapterTitle>
+              <div className="flex w-full min-w-0 flex-col gap-4 border-t border-ds-divider pt-12 sm:pt-14">
+                <SetupSubStepTitle notation={`${sessionChapterMark}.`}>Session</SetupSubStepTitle>
                 <div
-                  className={`grid w-full min-w-0 gap-4 [&>*]:min-w-0 ${
+                  className={`grid w-full min-w-0 gap-3 sm:gap-4 [&>*]:min-w-0 ${
                     showSessionDuration
-                      ? "max-w-2xl grid-cols-1 justify-items-stretch sm:grid-cols-3 sm:justify-items-start sm:gap-x-5 [&>*]:sm:max-w-[11.25rem]"
-                      : "max-w-[17.5rem] grid-cols-1 justify-items-start sm:max-w-xs"
+                      ? "max-w-2xl grid-cols-1 sm:grid-cols-3"
+                      : "max-w-md grid-cols-1"
                   }`}
                 >
                   {showSessionDuration && (
                     <>
                       <NumberInput
-                        layout="fill"
+                        layout="compact"
+                        stretchCompact
+                        className="min-w-0"
                         label="Minutes"
                         value={minutes}
                         min={0}
@@ -705,7 +715,9 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                         onChange={(v) => applySessionDuration(v, secondsPart)}
                       />
                       <NumberInput
-                        layout="fill"
+                        layout="compact"
+                        stretchCompact
+                        className="min-w-0"
                         label="Seconds"
                         value={secondsPart}
                         min={0}
@@ -719,13 +731,14 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                     </>
                   )}
                   <NumberInput
-                    layout="fill"
+                    layout="compact"
+                    stretchCompact
+                    className="min-w-0"
                     label="Rings"
                     value={rings}
                     min={1}
                     max={500}
                     onChange={setRings}
-                    className={showSessionDuration ? "min-w-0" : "w-full min-w-0"}
                   />
                 </div>
 
@@ -763,8 +776,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 </p>
               )}
 
-              <div className="flex flex-col gap-4">
-                <SetupChapterTitle roman="V">Sound</SetupChapterTitle>
+              <div className="flex w-full min-w-0 flex-col gap-4 border-t border-ds-divider pt-12 sm:pt-14">
+                <SetupSubStepTitle notation={`${soundChapterMark}.`}>Sound</SetupSubStepTitle>
                 <IntervalSoundPanel
                   className="max-w-md lg:justify-start lg:pt-0"
                   chimeRepeats={chimeRepeats}
@@ -779,19 +792,23 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   }}
                 />
               </div>
-              <div className="mx-auto flex w-full max-w-md flex-col gap-3 border-t border-ds-divider pt-8 lg:mx-0 lg:max-w-sm">
-                <ControlButton
-                  className="!min-w-0 w-full gap-2 py-4 text-[11px] tracking-[0.14em] sm:text-xs sm:tracking-[0.16em]"
-                  aria-label="Start interval session"
-                  disabled={!schedulePreview.ok}
-                  onClick={beginPlayback}
-                >
-                  <span aria-hidden className="inline-block translate-y-px text-[0.65em] opacity-90">
-                    ▶
-                  </span>
-                  Start session
-                </ControlButton>
-              </div>
+              {setupIntervals.length === 0 ? (
+                <div className="w-full min-w-0 border-t border-ds-divider pt-8">
+                  <div className="mx-auto max-w-md lg:mx-0 lg:max-w-sm">
+                    <ControlButton
+                      className="!min-w-0 w-full gap-2 py-4 text-[11px] tracking-[0.14em] sm:text-xs sm:tracking-[0.16em]"
+                      aria-label="Start interval session"
+                      disabled={!schedulePreview.ok}
+                      onClick={beginPlayback}
+                    >
+                      <span aria-hidden className="inline-block translate-y-px text-[0.65em] opacity-90">
+                        ▶
+                      </span>
+                      Start session
+                    </ControlButton>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             {setupIntervals.length > 0 && (
@@ -810,6 +827,19 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   phaseLabels={setupPhaseLabels}
                   variant="embedded"
                   fillHeight
+                  headerEnd={
+                    <ControlButton
+                      className="!min-h-9 shrink-0 gap-2 !px-3 py-2 text-[10px] tracking-[0.14em] sm:!min-h-10 sm:!px-4 sm:text-[11px] sm:tracking-[0.15em]"
+                      aria-label="Start interval session"
+                      disabled={!schedulePreview.ok}
+                      onClick={beginPlayback}
+                    >
+                      <span aria-hidden className="inline-block translate-y-px text-[0.65em] opacity-90">
+                        ▶
+                      </span>
+                      Start session
+                    </ControlButton>
+                  }
                 />
               </div>
             )}

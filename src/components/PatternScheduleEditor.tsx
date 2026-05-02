@@ -1,13 +1,18 @@
 "use client";
 
 import type { CSSProperties } from "react";
-import { NumberInput } from "./NumberInput";
 import { MAX_PATTERN_PHASES } from "@/lib/buildIntervalSchedule";
-import { MAX_DURATION_TOTAL_SEC, normalizeDurationParts } from "@/lib/normalizeDurationParts";
+import {
+  MAX_DURATION_TOTAL_SEC,
+  normalizeHmsParts,
+  splitTotalSecToHms,
+  totalSecFromHms,
+} from "@/lib/normalizeDurationParts";
 
 export type PatternConstraint = "fitTotal" | "fixed";
 
 export type PatternPhasePersist = {
+  hours: number;
   minutes: number;
   secondsPart: number;
 };
@@ -19,7 +24,6 @@ type Props = {
 
 const LETTERS = ["A", "B", "C", "D", "E", "F"] as const;
 
-/** Rail ~20% tighter than legacy sizes; mask feathers toward inputs; letter uses same horizontal gradient + bg-clip-text. */
 const phaseRailMaskStyle: CSSProperties = {
   WebkitMaskImage: "linear-gradient(90deg, #000 0%, #000 78%, transparent 100%)",
   maskImage: "linear-gradient(90deg, #000 0%, #000 78%, transparent 100%)",
@@ -27,28 +31,177 @@ const phaseRailMaskStyle: CSSProperties = {
 
 const letterGradient = "bg-[linear-gradient(90deg,transparent_0%,var(--color-fg)_42%,var(--color-fg)_100%)]";
 
-/** Reorder arrows: interaction via hit area / hover fill only — no box borders. */
-const reorderBtnClass =
-  "flex h-11 min-w-11 shrink-0 items-center justify-center rounded-sm text-[15px] font-light leading-none text-ds-soft transition-colors duration-ds sm:h-12 sm:min-w-12 sm:text-[16px] " +
-  "hover:bg-ds-section/45 hover:text-ds-fg " +
-  "active:bg-ds-section/55 " +
-  "disabled:pointer-events-none disabled:opacity-25 " +
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]";
+const reorderNudgeClass =
+  "rounded-sm px-1.5 py-0.5 text-[10px] font-medium leading-none text-ds-muted transition-colors duration-ds hover:bg-ds-section/40 hover:text-ds-fg disabled:pointer-events-none disabled:opacity-20 " +
+  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] sm:text-[11px]";
 
 const rowShell =
-  "group relative isolate flex min-h-[6.75rem] flex-nowrap items-center justify-start gap-x-3 px-3 py-3 ps-[calc(6.5rem+0.125rem)] pe-4 sm:min-h-[8rem] sm:gap-x-5 sm:px-4 sm:py-3.5 sm:ps-[calc(7.75rem+0.25rem)] sm:pe-5";
+  "group relative isolate flex min-h-[5.25rem] flex-nowrap items-center gap-x-2 px-3 py-2.5 ps-[calc(6.5rem+0.125rem)] pe-3 sm:min-h-[6rem] sm:gap-x-4 sm:px-4 sm:py-3 sm:ps-[calc(7.75rem+0.25rem)] sm:pe-4";
+
+const stepperPairClass =
+  "flex w-full min-w-0 max-w-[4.25rem] overflow-hidden rounded-md border border-ds-divider bg-ds-page shadow-[inset_0_1px_0_rgba(127,119,106,0.06)] sm:max-w-[4.75rem]";
+
+const stepperHitClass =
+  "flex flex-1 items-center justify-center py-2 text-[13px] font-normal leading-none text-ds-soft antialiased transition-colors duration-ds hover:bg-ds-section/55 hover:text-ds-fg active:bg-ds-section/70 disabled:pointer-events-none disabled:opacity-[0.25] sm:py-2.5 sm:text-sm " +
+  "focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-fg-muted)]";
+
+type HmsClockProps = {
+  phaseLetter: string;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  totalSec: number;
+  hourDec: () => void;
+  hourInc: () => void;
+  minDec: () => void;
+  minInc: () => void;
+  secDec: () => void;
+  secInc: () => void;
+  hourIncBlocked: boolean;
+  minIncBlocked: boolean;
+  secIncBlocked: boolean;
+};
+
+/**
+ * One framed readout: large HH : MM : SS line, then a single row of three balanced stepper pairs (no triple “sandwich” chrome).
+ */
+function HmsClock({
+  phaseLetter,
+  hours,
+  minutes,
+  seconds,
+  totalSec,
+  hourDec,
+  hourInc,
+  minDec,
+  minInc,
+  secDec,
+  secInc,
+  hourIncBlocked,
+  minIncBlocked,
+  secIncBlocked,
+}: HmsClockProps) {
+  const hh = String(hours).padStart(2, "0");
+  const mm = String(minutes).padStart(2, "0");
+  const ss = String(seconds).padStart(2, "0");
+  const atCap = totalSec >= MAX_DURATION_TOTAL_SEC;
+
+  return (
+    <div
+      className="w-full max-w-[min(100%,17.5rem)] rounded-xl border border-ds-divider bg-ds-section/15 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(127,119,106,0.09)] sm:max-w-none sm:px-4 sm:py-3"
+      role="group"
+      aria-label={`Phase ${phaseLetter} duration`}
+    >
+      <p
+        className="mb-2.5 text-center font-mono text-[1.375rem] font-medium leading-none tracking-[-0.02em] text-ds-fg tabular-nums sm:mb-3 sm:text-[1.625rem]"
+        aria-live="polite"
+      >
+        <span className="inline-block min-w-[2ch] text-right">{hh}</span>
+        <span className="mx-0.5 inline-block text-[0.92em] font-light text-ds-muted/70 sm:mx-1" aria-hidden>
+          :
+        </span>
+        <span className="inline-block min-w-[2ch] text-right">{mm}</span>
+        <span className="mx-0.5 inline-block text-[0.92em] font-light text-ds-muted/70 sm:mx-1" aria-hidden>
+          :
+        </span>
+        <span className="inline-block min-w-[2ch] text-right">{ss}</span>
+      </p>
+
+      <div className="grid grid-cols-[1fr_1fr_1fr] gap-x-2 sm:gap-x-3">
+        <div className="flex min-w-0 flex-col items-center gap-1">
+          <div className={stepperPairClass}>
+            <button
+              type="button"
+              className={`${stepperHitClass} border-e border-ds-divider/80`}
+              aria-label={`Phase ${phaseLetter} — decrease hours`}
+              disabled={totalSec < 3600}
+              onClick={hourDec}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className={stepperHitClass}
+              aria-label={`Phase ${phaseLetter} — increase hours`}
+              disabled={atCap || hourIncBlocked}
+              onClick={hourInc}
+            >
+              +
+            </button>
+          </div>
+          <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-ds-soft sm:text-[10px] sm:tracking-[0.18em]">
+            Hr
+          </span>
+        </div>
+
+        <div className="flex min-w-0 flex-col items-center gap-1">
+          <div className={stepperPairClass}>
+            <button
+              type="button"
+              className={`${stepperHitClass} border-e border-ds-divider/80`}
+              aria-label={`Phase ${phaseLetter} — decrease minutes`}
+              disabled={totalSec < 60}
+              onClick={minDec}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className={stepperHitClass}
+              aria-label={`Phase ${phaseLetter} — increase minutes`}
+              disabled={atCap || minIncBlocked}
+              onClick={minInc}
+            >
+              +
+            </button>
+          </div>
+          <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-ds-soft sm:text-[10px] sm:tracking-[0.18em]">
+            Min
+          </span>
+        </div>
+
+        <div className="flex min-w-0 flex-col items-center gap-1">
+          <div className={stepperPairClass}>
+            <button
+              type="button"
+              className={`${stepperHitClass} border-e border-ds-divider/80`}
+              aria-label={`Phase ${phaseLetter} — decrease seconds`}
+              disabled={totalSec < 1}
+              onClick={secDec}
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className={stepperHitClass}
+              aria-label={`Phase ${phaseLetter} — increase seconds`}
+              disabled={atCap || secIncBlocked}
+              onClick={secInc}
+            >
+              +
+            </button>
+          </div>
+          <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-ds-soft sm:text-[10px] sm:tracking-[0.18em]">
+            Sec
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
-  const applyPhase = (idx: number, minutes: number, secondsPart: number) => {
-    const n = normalizeDurationParts(minutes, secondsPart);
-    const next = slots.slice();
-    next[idx] = { minutes: n.minutes, secondsPart: n.secondsPart };
-    onSlotsChange(next);
+  const applyPhaseTotalSec = (idx: number, totalSecRaw: number) => {
+    const nextSlot = splitTotalSecToHms(totalSecRaw);
+    const copy = slots.slice();
+    copy[idx] = nextSlot;
+    onSlotsChange(copy);
   };
 
   const addPhase = () => {
     if (slots.length >= MAX_PATTERN_PHASES) return;
-    onSlotsChange([...slots, { minutes: 1, secondsPart: 0 }]);
+    const next: PatternPhasePersist[] = [...slots, normalizeHmsParts(0, 1, 0)];
+    onSlotsChange(next);
   };
 
   const removePhase = (idx: number) => {
@@ -60,9 +213,12 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
     const j = idx + delta;
     if (j < 0 || j >= slots.length) return;
     const next = slots.slice();
-    [next[idx], next[j]] = [next[j], next[idx]];
+    [next[idx], next[j]] = [next[j]!, next[idx]!];
     onSlotsChange(next);
   };
+
+  const incClamped = (totalSec: number, d: number) =>
+    d > 0 && Math.min(MAX_DURATION_TOTAL_SEC, totalSec + d) === totalSec;
 
   return (
     <div className="relative w-full min-w-0 overflow-hidden rounded-sm border border-ds-divider bg-ds-page text-left" dir="ltr">
@@ -72,6 +228,9 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
         const isLastSlotRow = idx === slots.length - 1;
         const hasAddRow = slots.length < MAX_PATTERN_PHASES;
         const dividerBelow = !(isLastSlotRow && !hasAddRow);
+
+        const totalSec = totalSecFromHms(slot.hours, slot.minutes, slot.secondsPart);
+        const bump = (d: number) => applyPhaseTotalSec(idx, totalSec + d);
 
         return (
           <div
@@ -95,12 +254,41 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
               {letter}
             </span>
 
-            <div className="relative z-10 flex min-w-0 flex-1 flex-nowrap items-center gap-x-3 sm:gap-x-5">
+            <div className="relative z-10 flex min-w-0 flex-1 justify-center sm:justify-start">
+              <HmsClock
+                phaseLetter={letter}
+                hours={slot.hours}
+                minutes={slot.minutes}
+                seconds={slot.secondsPart}
+                totalSec={totalSec}
+                hourDec={() => bump(-3600)}
+                hourInc={() => bump(3600)}
+                minDec={() => bump(-60)}
+                minInc={() => bump(60)}
+                secDec={() => bump(-1)}
+                secInc={() => bump(1)}
+                hourIncBlocked={incClamped(totalSec, 3600)}
+                minIncBlocked={incClamped(totalSec, 60)}
+                secIncBlocked={incClamped(totalSec, 1)}
+              />
+            </div>
+
+            <div className="relative z-10 flex shrink-0 items-center gap-2 sm:gap-3">
+              {slots.length > 1 ? (
+                <button
+                  type="button"
+                  className="inline-flex min-h-10 items-center rounded-sm px-2.5 py-2 font-sans text-[11px] font-normal uppercase tracking-[0.14em] text-ds-body transition-[color,background-color] duration-ds ease-ds-out hover:bg-ds-section/35 hover:text-ds-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] sm:min-h-11 sm:px-3 sm:text-[12px] sm:tracking-[0.15em]"
+                  aria-label={`Remove phase ${letter}`}
+                  onClick={() => removePhase(idx)}
+                >
+                  Remove
+                </button>
+              ) : null}
               {canReorder ? (
-                <div className="relative z-10 flex shrink-0 flex-col gap-2">
+                <div className="flex flex-col items-center justify-center gap-0.5">
                   <button
                     type="button"
-                    className={reorderBtnClass}
+                    className={reorderNudgeClass}
                     aria-label={`Move phase ${letter} up`}
                     disabled={idx === 0}
                     onClick={() => movePhase(idx, -1)}
@@ -109,7 +297,7 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
                   </button>
                   <button
                     type="button"
-                    className={reorderBtnClass}
+                    className={reorderNudgeClass}
                     aria-label={`Move phase ${letter} down`}
                     disabled={idx === slots.length - 1}
                     onClick={() => movePhase(idx, 1)}
@@ -117,49 +305,6 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
                     ▾
                   </button>
                 </div>
-              ) : null}
-
-              <NumberInput
-                density="dense"
-                grow
-                rounding="sharp"
-                className="min-w-0 flex-1 basis-0"
-                layout="compact"
-                label="Min"
-                value={slot.minutes}
-                min={0}
-                max={999}
-                onChange={(v) => applyPhase(idx, v, slot.secondsPart)}
-              />
-              <NumberInput
-                density="dense"
-                grow
-                narrow
-                rounding="sharp"
-                className="min-w-0 flex-1 basis-0"
-                layout="compact"
-                label="Sec"
-                value={slot.secondsPart}
-                min={0}
-                max={59}
-                strictClamp={false}
-                commitOnBlur
-                disableDec={slot.minutes * 60 + slot.secondsPart <= 0}
-                disableInc={slot.minutes * 60 + slot.secondsPart >= MAX_DURATION_TOTAL_SEC}
-                onChange={(raw) => applyPhase(idx, slot.minutes, raw)}
-              />
-            </div>
-
-            <div className="relative z-10 ml-auto flex shrink-0 items-center ps-2 sm:ps-4">
-              {slots.length > 1 ? (
-                <button
-                  type="button"
-                  className="inline-flex min-h-11 items-center rounded-sm px-3 py-2 font-sans text-[12px] font-normal uppercase tracking-[0.14em] text-ds-body transition-[color,background-color] duration-ds ease-ds-out hover:bg-ds-section/35 hover:text-ds-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] sm:min-h-12 sm:px-3.5 sm:text-[13px] sm:tracking-[0.15em]"
-                  aria-label={`Remove phase ${letter}`}
-                  onClick={() => removePhase(idx)}
-                >
-                  Remove
-                </button>
               ) : null}
             </div>
           </div>

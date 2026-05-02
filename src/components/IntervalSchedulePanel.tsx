@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { formatMmSs } from "@/lib/formatTime";
 
@@ -14,6 +15,8 @@ type Props = {
   fillHeight?: boolean;
   flashActive?: boolean;
   prefersReducedMotion?: boolean;
+  /** Extra actions in the title row (e.g. setup “Start session”) — omit during playback. */
+  headerEnd?: ReactNode;
 };
 
 function statusLabel(playing: boolean, i: number, activeIndex: number): "Done" | "Now" | "Next" | null {
@@ -183,6 +186,7 @@ export function IntervalSchedulePanel({
   fillHeight = false,
   flashActive = false,
   prefersReducedMotion = false,
+  headerEnd,
 }: Props) {
   const playing = typeof activeIndex === "number" && activeIndex >= 0;
 
@@ -290,33 +294,40 @@ export function IntervalSchedulePanel({
     >
       <div
         className={[
-          "flex min-w-0 flex-col gap-1 sm:flex-row sm:items-end sm:justify-between sm:gap-3 sm:text-left",
-          stretchList ? "shrink-0 border-b border-ds-divider/50 pb-2 sm:pb-2.5" : "",
+          "flex w-full min-w-0 flex-col gap-2 border-b border-ds-divider/50 pb-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:pb-2.5",
+          stretchList ? "shrink-0" : "",
         ]
           .filter(Boolean)
           .join(" ")}
       >
-        <h2 className="text-sm font-normal leading-snug text-ds-fg">
+        <h2 className="min-w-0 text-sm font-normal leading-snug text-ds-fg">
           {playing ? "Your run" : "Schedule"}
           <span className="text-ds-muted">
             {n === 1 ? " · 1 ring" : ` · ${n} rings`}
           </span>
         </h2>
 
-        {playing ? (
-          <p
-            className="w-full font-mono text-xs tabular-nums text-ds-muted sm:max-w-[min(100%,20rem)] sm:text-right"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(progress)}
-            aria-valuetext={`${formatMmSs(elapsedPlannedMs)} elapsed of ${formatMmSs(total)}`}
-          >
-            {formatMmSs(elapsedPlannedMs)} <span className="text-ds-dim">/</span> {formatMmSs(total)}
-          </p>
-        ) : (
-          <p className="font-mono text-xs tabular-nums text-ds-muted">{formatMmSs(total)}</p>
-        )}
+        <div className="flex min-w-0 flex-wrap items-center justify-start gap-x-3 gap-y-2 sm:justify-end sm:gap-x-3">
+          {playing ? (
+            <p
+              className="w-full font-mono text-xs tabular-nums text-ds-muted sm:max-w-[min(100%,20rem)] sm:w-auto sm:text-right"
+              role="progressbar"
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-valuenow={Math.round(progress)}
+              aria-valuetext={`${formatMmSs(elapsedPlannedMs)} elapsed of ${formatMmSs(total)}`}
+            >
+              {formatMmSs(elapsedPlannedMs)} <span className="text-ds-dim">/</span> {formatMmSs(total)}
+            </p>
+          ) : (
+            <>
+              <p className="whitespace-nowrap font-mono text-xs tabular-nums text-ds-muted">
+                {formatMmSs(total)}
+              </p>
+              {headerEnd}
+            </>
+          )}
+        </div>
       </div>
 
       <div

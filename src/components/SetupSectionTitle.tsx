@@ -4,7 +4,7 @@ import { ReactNode } from "react";
 
 type SectionProps = {
   children: ReactNode;
-  /** Ordering hint — legacy monospace prefix; prefer {@link SetupChapterTitle} on setup page. */
+  /** Ordering hint — legacy monospace prefix; prefer {@link SetupSubStepTitle} for setup steps. */
   step?: number;
 };
 
@@ -41,36 +41,5 @@ export function SetupSubStepTitle({ notation, children }: SubProps) {
         {children}
       </span>
     </h3>
-  );
-}
-
-type ChapterProps = {
-  children: ReactNode;
-  /** Trailing serif roman (muted, italic) — aligns end of row. Not a duplicate locale string. */
-  roman: string;
-  /** Opening band: no divider above setup column chrome. */
-  isFirst?: boolean;
-};
-
-/** Major setup band — title left / roman right, serif, subtle rule above when not first. */
-export function SetupChapterTitle({ children, roman, isFirst }: ChapterProps) {
-  return (
-    <div className={isFirst ? "" : "border-t border-ds-divider pt-12 sm:pt-14"}>
-      <h2
-        className={`flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-left ${
-          isFirst ? "mb-6 sm:mb-7" : "mb-6 sm:mb-8"
-        }`}
-      >
-        <span className="font-display text-[1.375rem] font-normal normal-case tracking-[-0.02em] text-ds-fg sm:text-[1.55rem] sm:tracking-[-0.025em]">
-          {children}
-        </span>
-        <span
-          lang="la"
-          className="font-display text-[1.125rem] font-normal italic leading-none tracking-tight text-ds-muted opacity-90 sm:text-[1.25rem]"
-        >
-          {roman}
-        </span>
-      </h2>
-    </div>
   );
 }

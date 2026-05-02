@@ -26,8 +26,8 @@ type Props = {
   narrow?: boolean;
   /** Dense only: fill horizontal space in flex layouts (value field flexes). */
   grow?: boolean;
-  /** Compact row chrome: sharper corners / hairline rhythm (pattern phase editors). */
-  rounding?: "default" | "sharp";
+  /** When `layout` is `compact` and density is default: row spans full width (grid columns). */
+  stretchCompact?: boolean;
   /**
    * When false, only coerces to a non-negative integer; min/max are not applied to values
    * (use for fields where a parent normalizes overflow, e.g. seconds → minutes).
@@ -69,7 +69,7 @@ export function NumberInput({
   density = "default",
   narrow = false,
   grow = false,
-  rounding = "default",
+  stretchCompact = false,
 }: Props) {
   const [textDraft, setTextDraft] = useState<string | null>(null);
 
@@ -107,38 +107,35 @@ export function NumberInput({
   const fill = layout === "fill";
   const isDense = density === "dense" && !fill;
   const denseGrow = isDense && grow;
-  const sharpCompound = rounding === "sharp" && !fill;
-  const shellRound =
-    fill || !isDense
-      ? "rounded-md"
-      : rounding === "sharp"
-        ? "rounded-sm"
-        : "rounded-md";
-
-  /** Phase-style compounds: keep inner vertical rules so − / value / + read as one framed control. */
-  const innerDivide =
-    isDense && !fill
-      ? sharpCompound
-        ? "border-x border-ds-border "
-        : "border-x border-ds-divider "
-      : "";
+  const stretchRow = layout === "compact" && !fill && !isDense && stretchCompact;
+  const shellRound = "rounded-md";
 
   const inputClassName =
     `bg-transparent text-center text-ds-fg outline-none transition-colors duration-100 ` +
     `placeholder:text-ds-label [appearance:textfield] focus:border-transparent ` +
     `[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ` +
-    (sharpCompound ? "bg-ds-section/20 " : "") +
     (fill
       ? "h-12 w-full min-w-0 shrink-0 border-0 font-mono text-base tabular-nums sm:text-lg "
       : denseGrow && narrow
-        ? `h-10 min-w-[2.9rem] flex-1 ${innerDivide}font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:min-w-[3.2rem] sm:text-[1.0625rem] `
+        ? "h-12 min-w-[3rem] flex-1 border-x border-ds-divider font-mono text-base tabular-nums sm:min-w-[3.25rem] sm:text-lg "
         : denseGrow
-          ? `h-10 min-w-[3.4rem] flex-1 ${innerDivide}font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:min-w-[3.85rem] sm:text-[1.0625rem] `
+          ? "h-12 min-w-0 flex-1 border-x border-ds-divider font-mono text-base tabular-nums sm:text-lg "
           : isDense && narrow
-            ? `h-10 w-[3rem] shrink-0 ${innerDivide}font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:w-[3.35rem] sm:text-[1.0625rem] `
+            ? "h-12 w-[3.35rem] shrink-0 border-x border-ds-divider font-mono text-base tabular-nums sm:w-[3.5rem] sm:text-lg "
             : isDense
-              ? `h-10 w-[3.65rem] shrink-0 ${innerDivide}font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:w-[4rem] sm:text-[1.0625rem] `
-              : "h-12 w-14 shrink-0 border-x border-ds-divider font-mono text-base tabular-nums sm:w-16 sm:text-lg ");
+              ? "h-12 min-w-0 w-[4.25rem] shrink-0 border-x border-ds-divider font-mono text-base tabular-nums sm:w-[4.5rem] sm:text-lg "
+              : stretchRow
+                ? "h-12 min-w-0 flex-1 border-x border-ds-divider font-mono text-base tabular-nums sm:text-lg "
+                : "h-12 w-14 shrink-0 border-x border-ds-divider font-mono text-base tabular-nums sm:w-16 sm:text-lg ");
+
+  const compactOuterClass =
+    fill ? "" : isDense ? (denseGrow ? "flex min-w-0 w-full flex-col items-stretch gap-2" : "flex flex-col items-center gap-2") : stretchRow ? "flex min-w-0 w-full flex-col items-stretch gap-2" : "flex flex-col items-center gap-2";
+
+  const compactInnerRowClass = [
+    denseGrow || stretchRow ? "flex w-full min-w-0" : "flex",
+    "overflow-hidden bg-ds-page focus-within:border-ds-hover border border-ds-section",
+    shellRound,
+  ].join(" ");
 
   const inputEl = (
     <input
@@ -175,20 +172,14 @@ export function NumberInput({
   return (
     <div
       className={[
-        fill
-          ? "flex min-w-0 w-full flex-col gap-2"
-          : isDense
-            ? denseGrow
-              ? "flex min-w-0 w-full flex-col items-stretch gap-3"
-              : "flex flex-col items-center gap-3"
-            : "flex flex-col items-center gap-2",
+        fill ? "flex min-w-0 w-full flex-col gap-2" : compactOuterClass,
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
       <span
-        className={`uppercase text-ds-soft ${isDense ? `text-[10px] font-light tracking-[0.13em] sm:text-[11px] sm:tracking-[0.15em] ${denseGrow ? "block w-full text-center" : ""}` : "text-[11px] tracking-[0.14em] sm:tracking-[0.16em]"} ${fill ? (labelAlign === "start" ? "block w-full text-left" : "block w-full text-center") : ""}`}
+        className={`uppercase text-ds-soft text-[11px] tracking-[0.14em] sm:tracking-[0.16em] ${fill ? (labelAlign === "start" ? "block w-full text-left" : "block w-full text-center") : denseGrow || stretchRow ? "block w-full text-center" : ""} `}
       >
         {label}
       </span>
@@ -226,12 +217,10 @@ export function NumberInput({
           </button>
         </div>
       ) : (
-        <div
-          className={`${denseGrow ? "flex w-full min-w-0" : "flex"} overflow-hidden bg-ds-page focus-within:border-ds-hover ${isDense ? `border ${rounding === "sharp" ? "border-2 border-ds-border" : "border border-ds-divider"}` : `border border-ds-section`} ${shellRound}`}
-        >
+        <div className={compactInnerRowClass}>
           <button
             type="button"
-            className={`${stepperBtnClasses} shrink-0 ${isDense ? "h-10 w-10 font-[200] text-[1.125rem] leading-none text-ds-soft sm:h-11 sm:w-11 sm:text-[1.25rem]" : "h-12 w-11"}`}
+            className={`${stepperBtnClasses} h-12 w-11 shrink-0 text-[1.125rem] font-light leading-none text-ds-soft sm:text-[1.25rem]`}
             aria-label={`Decrease ${label}`}
             disabled={decDisabled}
             onClick={() => {
@@ -244,7 +233,7 @@ export function NumberInput({
           {inputEl}
           <button
             type="button"
-            className={`${stepperBtnClasses} shrink-0 ${isDense ? "h-10 w-10 font-[200] text-[1.125rem] leading-none text-ds-soft sm:h-11 sm:w-11 sm:text-[1.25rem]" : "h-12 w-11"}`}
+            className={`${stepperBtnClasses} h-12 w-11 shrink-0 text-[1.125rem] font-light leading-none text-ds-soft sm:text-[1.25rem]`}
             aria-label={`Increase ${label}`}
             disabled={incDisabled}
             onClick={() => {
