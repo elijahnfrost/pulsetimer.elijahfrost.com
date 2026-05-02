@@ -22,7 +22,7 @@ export function IntervalSoundPanel({
   className = "",
 }: Props) {
   return (
-    <div className={`flex flex-col w-full min-w-0 rounded-sm overflow-hidden border border-ds-divider ${className}`}>
+    <div className={`flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider ${className}`}>
       <BigRow label="BEEP" borderBottom>
         <BigNumber
           label="Beeps"

@@ -10,6 +10,7 @@ import {
   HmsClock,
 } from "./BigEditors";
 
+import { controlButtonClasses, denseIconButtonClass } from "./Controls";
 import { BigRow } from "./BigRow";
 
 export type PatternConstraint = "fitTotal" | "fixed";
@@ -82,7 +83,10 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
   };
 
   return (
-    <div className="relative w-full min-w-0 overflow-hidden rounded-sm border border-ds-divider bg-ds-page text-left" dir="ltr">
+    <div
+      className="relative w-full min-w-0 overflow-x-auto overflow-y-visible rounded-md border border-ds-divider bg-ds-page text-left sm:overflow-hidden"
+      dir="ltr"
+    >
       {slots.map((slot, idx) => {
         const letter = LETTERS[idx] ?? String(idx + 1);
         const canReorder = slots.length > 1;
@@ -101,7 +105,7 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
                     <div className="flex flex-col items-center justify-center gap-0.5">
                       <button
                         type="button"
-                        className="flex h-6 w-6 items-center justify-center rounded-sm text-ds-muted transition-colors duration-ds hover:bg-ds-section/40 hover:text-ds-fg disabled:pointer-events-none disabled:opacity-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]"
+                        className={`${denseIconButtonClass} h-7 w-7 text-ds-muted hover:text-ds-fg disabled:opacity-20`}
                         aria-label={`Move phase ${letter} up`}
                         disabled={idx === 0}
                         onClick={() => movePhase(idx, -1)}
@@ -110,7 +114,7 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
                       </button>
                       <button
                         type="button"
-                        className="flex h-6 w-6 items-center justify-center rounded-sm text-ds-muted transition-colors duration-ds hover:bg-ds-section/40 hover:text-ds-fg disabled:pointer-events-none disabled:opacity-20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]"
+                        className={`${denseIconButtonClass} h-7 w-7 text-ds-muted hover:text-ds-fg disabled:opacity-20`}
                         aria-label={`Move phase ${letter} down`}
                         disabled={idx === slots.length - 1}
                         onClick={() => movePhase(idx, 1)}
@@ -122,7 +126,7 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
                   {slots.length > 1 ? (
                     <button
                       type="button"
-                      className="flex h-10 w-10 items-center justify-center rounded-sm text-ds-muted transition-[color,background-color] duration-ds ease-ds-out hover:bg-red-500/10 hover:text-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] sm:h-11 sm:w-11"
+                      className={`${denseIconButtonClass} h-10 w-10 text-ds-muted transition-[color,background-color,border-color] duration-ds ease-ds-out hover:border-red-500/35 hover:bg-red-500/10 hover:text-red-500 sm:h-11 sm:w-11`}
                       aria-label={`Remove phase ${letter}`}
                       onClick={() => removePhase(idx)}
                     >
@@ -148,7 +152,7 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
         <button
           type="button"
           aria-label={`Add phase ${LETTERS[slots.length] ?? "?"}…`}
-          className="flex min-h-[2.875rem] w-full items-center justify-center gap-x-2 border-t border-ds-divider bg-ds-page px-4 py-2.5 font-sans text-[11px] font-medium uppercase tracking-[0.15em] text-ds-soft transition-colors duration-ds hover:bg-ds-section/40 hover:text-ds-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] sm:min-h-11 sm:text-[12px]"
+          className={`${controlButtonClasses("secondary")} flex min-h-[2.875rem] w-full min-w-0 items-center justify-center gap-x-2 rounded-none border-x-0 border-b-0 border-t border-ds-divider bg-ds-page px-4 py-2.5 sm:min-h-11`}
           onClick={addPhase}
         >
           <PlusIcon className="h-3.5 w-3.5" />

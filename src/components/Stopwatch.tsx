@@ -171,7 +171,7 @@ export function Stopwatch({ actionsRef, onActivityChange }: Props) {
   return (
     <div className="mx-auto mt-8 w-full text-center transition-opacity duration-ds ease-ds-out">
       <section aria-label="Stopwatch" className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-10 sm:px-10">
-        <div className="flex flex-col w-full min-w-0 rounded-sm overflow-hidden border border-ds-divider max-w-md mx-auto">
+        <div className="mx-auto flex w-full max-w-md min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
           <BigRow label="SW">
             <div className="flex items-center justify-center w-full pl-2 sm:pl-4">
               <div className="font-mono text-[clamp(1.6rem,3.8vmin,2.1rem)] font-medium leading-none tracking-[-0.02em] text-ds-fg tabular-nums">
@@ -200,7 +200,7 @@ export function Stopwatch({ actionsRef, onActivityChange }: Props) {
         </ControlsRow>
 
         {laps.length > 0 ? (
-          <div className="mx-auto max-h-48 max-w-2xl overflow-y-auto rounded-sm border border-ds-divider px-5 py-4 text-center">
+          <div className="mx-auto max-h-48 max-w-2xl overflow-y-auto rounded-md border border-ds-divider px-5 py-4 text-center">
             <ol className="space-y-2.5 font-mono text-[0.9375rem] leading-snug tracking-tight text-ds-fg">
               {laps.map((l, idx) => (
                 <li key={`${idx}-${l.cumulativeMs}`}>

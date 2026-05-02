@@ -55,7 +55,7 @@ export function BigRow({ label, children, rightAction, borderBottom = false, onC
         {label}
       </span>
 
-      <div className="relative z-10 flex min-w-0 flex-1 justify-center sm:justify-start">
+      <div className="relative z-10 flex min-w-0 flex-1 flex-row flex-nowrap items-center justify-center sm:justify-start">
         {children}
       </div>
 

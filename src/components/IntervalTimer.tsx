@@ -21,7 +21,7 @@ import {
 import { useAccurateTimer } from "@/hooks/useAccurateTimer";
 import { primeAudioFromUserGesture, useAudioAlert } from "@/hooks/useAudioAlert";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
-import { ControlButton, ControlsRow } from "./Controls";
+import { ControlButton, ControlsRow, controlButtonClasses } from "./Controls";
 import { BigRow } from "./BigRow";
 import { BigNumber, HmsClock } from "./BigEditors";
 import { IntervalSchedulePanel } from "./IntervalSchedulePanel";
@@ -662,7 +662,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
               <div className="flex flex-col gap-0">
                 <div className="flex flex-col gap-5">
                   <SetupSubStepTitle notation="1.">Pattern or random spread</SetupSubStepTitle>
-                  <div className="flex flex-col w-full min-w-0 rounded-sm overflow-hidden border border-ds-divider mt-2">
+                  <div className="mt-2 flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
                     <BigOption
                       label="PAT"
                       title="Pattern"
@@ -685,7 +685,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   <>
                     <div className="mt-14 flex flex-col gap-4 pt-14 sm:mt-16 sm:pt-16">
                       <SetupSubStepTitle notation="2.">Scale to session or fixed lengths</SetupSubStepTitle>
-                      <div className="flex flex-col w-full min-w-0 rounded-sm overflow-hidden border border-ds-divider mt-2">
+                      <div className="mt-2 flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
                         <BigOption
                           label="FIT"
                           title="Scale"
@@ -714,7 +714,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
 
               <div className="flex w-full min-w-0 flex-col gap-4 pt-12 sm:pt-14">
                 <SetupSubStepTitle notation={`${sessionChapterMark}.`}>Session</SetupSubStepTitle>
-                <div className="flex flex-col w-full min-w-0 rounded-sm overflow-hidden border border-ds-divider">
+                <div className="flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
                   {showSessionDuration && (
                     <BigRow label="DUR" borderBottom>
                       <HmsClock
@@ -790,7 +790,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 <div className="w-full min-w-0 pt-8">
                   <div className="mx-auto max-w-md lg:mx-0 lg:max-w-sm">
                     <button
-                      className="flex items-center justify-between w-full min-w-[12rem] rounded-sm bg-ds-fg px-5 py-4 text-ds-page transition-all duration-ds hover:opacity-90 active:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] disabled:pointer-events-none disabled:opacity-50"
+                      type="button"
+                      className={`${controlButtonClasses("primary")} flex w-full min-w-[12rem] items-center justify-between rounded-md px-5 py-4`}
                       aria-label="Start interval session"
                       disabled={!schedulePreview.ok}
                       onClick={beginPlayback}
@@ -830,7 +831,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   fillHeight
                   headerEnd={
                     <button
-                      className="flex items-center justify-between w-full min-w-[12rem] rounded-sm bg-ds-fg px-4 py-3 text-ds-page transition-all duration-ds hover:opacity-90 active:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] disabled:pointer-events-none disabled:opacity-50"
+                      type="button"
+                      className={`${controlButtonClasses("primary")} flex w-full min-w-[12rem] items-center justify-between rounded-md px-4 py-3`}
                       aria-label="Start interval session"
                       disabled={!schedulePreview.ok}
                       onClick={beginPlayback}
@@ -905,7 +907,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   <div className="flex items-center gap-2 w-full min-w-[12rem]">
                     {running ? (
                       <button
-                        className="flex-1 flex items-center justify-center rounded-sm bg-ds-fg px-4 py-3 text-ds-page transition-all duration-ds hover:opacity-90 active:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]"
+                        type="button"
+                        className={`${controlButtonClasses("primary")} flex flex-1 items-center justify-center rounded-md px-4 py-3`}
                         aria-label="Pause"
                         onClick={() => {
                           primeAudioFromUserGesture();
@@ -924,7 +927,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                       </button>
                     ) : (
                       <button
-                        className="flex-1 flex items-center justify-center rounded-sm bg-ds-fg px-4 py-3 text-ds-page transition-all duration-ds hover:opacity-90 active:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]"
+                        type="button"
+                        className={`${controlButtonClasses("primary")} flex flex-1 items-center justify-center rounded-md px-4 py-3`}
                         aria-label="Resume"
                         onClick={() => {
                           primeAudioFromUserGesture();
@@ -943,7 +947,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                       </button>
                     )}
                     <button
-                      className="flex items-center justify-center rounded-sm border border-ds-divider bg-transparent px-4 py-3 text-ds-soft transition-all duration-ds hover:border-ds-border hover:bg-ds-section/20 hover:text-ds-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]"
+                      type="button"
+                      className={`${controlButtonClasses("secondary")} flex min-w-0 shrink-0 items-center justify-center px-4 py-3`}
                       aria-label="Stop session"
                       onClick={() => {
                         primeAudioFromUserGesture();

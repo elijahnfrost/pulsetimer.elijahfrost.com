@@ -134,6 +134,33 @@ body * {
   }
 }
 
+[data-theme-toggle] {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  padding: 0;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0;
+  box-shadow: none !important;
+  outline: none !important;
+  outline-width: 0 !important;
+  outline-offset: 0 !important;
+  -webkit-tap-highlight-color: transparent;
+  --tw-ring-shadow: 0 0 #0000;
+  --tw-ring-offset-shadow: 0 0 #0000;
+  --tw-shadow: 0 0 #0000;
+  --tw-ring-offset-width: 0px;
+  --tw-ring-width: 0px;
+}
+
+[data-theme-toggle]:focus,
+[data-theme-toggle]:focus-visible,
+[data-theme-toggle]:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
 [data-theme-toggle] svg {
   transition: none;
 }

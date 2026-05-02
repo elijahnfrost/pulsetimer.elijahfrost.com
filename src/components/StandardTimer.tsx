@@ -192,7 +192,7 @@ export function StandardTimer({ actionsRef, onActivityChange }: Props) {
         aria-label="Standard countdown"
         className="mx-auto flex w-full max-w-3xl flex-col gap-10 px-4 py-10 text-center sm:px-10"
       >
-        <div className="flex flex-col w-full min-w-0 rounded-sm overflow-hidden border border-ds-divider max-w-md mx-auto">
+        <div className="mx-auto flex w-full max-w-md min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
           <BigRow label="TMR">
             <HmsClock
               phaseLetter="Timer"

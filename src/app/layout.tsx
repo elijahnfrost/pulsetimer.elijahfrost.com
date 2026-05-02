@@ -39,8 +39,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${cormorant.variable}`}>
-      <body className={`${inter.className} font-sans`}>
+    <html lang="en" suppressHydrationWarning className={`${inter.variable} ${cormorant.variable} min-h-full`}>
+      <body
+        className={`${inter.className} min-h-[100dvh] bg-ds-page font-sans text-ds-fg antialiased`}
+      >
         <Providers>{children}</Providers>
       </body>
     </html>

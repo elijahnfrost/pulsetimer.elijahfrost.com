@@ -2,11 +2,11 @@
 
 import { ButtonHTMLAttributes, ReactNode } from "react";
 
-type Variant = "primary" | "secondary";
+export type ControlButtonVariant = "primary" | "secondary";
 
 type BtnProps = {
   children: ReactNode;
-  variant?: Variant;
+  variant?: ControlButtonVariant;
   className?: string;
 } & ButtonHTMLAttributes<HTMLButtonElement>;
 
@@ -24,9 +24,17 @@ const secondary =
   `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] ` +
   `sm:min-h-[52px] sm:px-8 sm:text-[12px] sm:tracking-[0.13em]`;
 
-function btnClass(variant: Variant): string {
+/** Shared surfaces for `ControlButton` and layout-heavy callers (split rows, full-width session CTAs). */
+export function controlButtonClasses(variant: ControlButtonVariant = "primary"): string {
   return variant === "primary" ? primary : secondary;
 }
+
+/** Compact square actions — reorder arrows, trash in dense editors; pairs with focus ring used elsewhere. */
+export const denseIconButtonClass =
+  `inline-flex items-center justify-center rounded-md border border-ds-divider bg-transparent ` +
+  `text-ds-soft transition-all duration-ds hover:border-ds-border hover:bg-ds-section/30 hover:text-ds-fg ` +
+  `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] ` +
+  `disabled:pointer-events-none disabled:opacity-[0.42] active:opacity-95`;
 
 export function ControlButton({
   variant = "primary",
@@ -35,7 +43,7 @@ export function ControlButton({
   type = "button",
   ...rest
 }: BtnProps) {
-  const classes = `${btnClass(variant)} disabled:pointer-events-none disabled:opacity-[0.42]`;
+  const classes = `${controlButtonClasses(variant)} disabled:pointer-events-none disabled:opacity-[0.42]`;
   return (
     <button type={type} className={`${classes} ${className}`} {...rest}>
       {children}

@@ -36,7 +36,7 @@ export function SegmentedControl<T extends string>({
   const chipClasses =
     variant === "crisp"
       ? [
-          "min-h-12 max-w-full rounded-sm px-4 py-3 text-left text-[11px] font-semibold uppercase leading-snug tracking-[0.14em] transition-colors duration-ds sm:min-h-[3.25rem] sm:px-5 sm:py-3.5 sm:text-[12px] sm:tracking-[0.15em]",
+          "min-h-12 max-w-full rounded-md px-4 py-3 text-left text-[11px] font-semibold uppercase leading-snug tracking-[0.14em] transition-colors duration-ds sm:min-h-[3.25rem] sm:px-5 sm:py-3.5 sm:text-[12px] sm:tracking-[0.15em]",
           "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]",
         ]
       : [

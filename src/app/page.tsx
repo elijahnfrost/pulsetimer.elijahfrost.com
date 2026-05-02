@@ -111,12 +111,15 @@ export default function Home() {
 
   return (
     <div className="flex min-h-[100dvh] flex-col bg-ds-page text-ds-fg">
-      <header className="w-full shrink-0 px-4 pb-6 pt-[max(1.5rem,env(safe-area-inset-top))] sm:px-10 sm:pb-8 sm:pt-8">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4">
-          <h1 className="font-sans text-[11px] font-semibold uppercase tracking-[0.2em] text-ds-fg sm:text-[12px] shrink-0">
+      <header className="w-full shrink-0 px-3 pb-5 pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-5 sm:pb-6 sm:pt-7">
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-[1fr_auto] items-center gap-x-3 gap-y-4 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:gap-x-5 md:gap-y-0">
+          <h1 className="col-start-1 row-start-1 self-center font-sans text-[11px] font-semibold uppercase leading-none tracking-[0.2em] text-ds-fg sm:text-[12px]">
             Pulse Timer
           </h1>
-          <div className="flex-1 max-w-2xl px-4 hidden md:block">
+          <div className="col-start-2 row-start-1 justify-self-end self-center md:col-start-3">
+            <ThemeToggle />
+          </div>
+          <div className="col-span-2 min-w-0 self-center md:col-span-1 md:col-start-2 md:row-start-1 md:w-max md:max-w-[min(24rem,calc(100vw-12rem))] md:justify-self-center">
             <Tabs
               active={tab}
               onChange={(k) => {
@@ -125,20 +128,10 @@ export default function Home() {
               }}
             />
           </div>
-          <ThemeToggle />
-        </div>
-        <div className="w-full mt-6 md:hidden">
-          <Tabs
-            active={tab}
-            onChange={(k) => {
-              setActiveTab(k);
-              activeRef.current = k;
-            }}
-          />
         </div>
       </header>
 
-      <main className="mx-auto flex min-w-0 w-full max-w-7xl flex-1 flex-col items-stretch px-5 pb-10 pt-2 text-center font-sans antialiased sm:px-10">
+      <main className="mx-auto flex min-w-0 w-full max-w-7xl flex-1 flex-col items-stretch px-5 pb-10 pt-2 text-left font-sans antialiased sm:px-10">
         {/* Keep panels mounted so tab switches never reset in-memory state or flash defaults */}
         <div className="w-full min-w-0 max-w-7xl flex-1 text-left transition-opacity duration-ds ease-ds-out">
           <div

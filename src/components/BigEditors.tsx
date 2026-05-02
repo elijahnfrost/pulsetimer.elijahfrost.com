@@ -11,7 +11,7 @@ export const phaseRailMaskStyle: CSSProperties = {
 export const letterGradient = "bg-[linear-gradient(90deg,transparent_0%,var(--color-fg)_42%,var(--color-fg)_100%)]";
 
 export const rowShellBase =
-  "group relative isolate flex min-h-[5.5rem] flex-nowrap items-center gap-x-1.5 px-3 py-4 pe-3 sm:min-h-[6rem] sm:gap-x-3 sm:px-4 sm:py-4 sm:pe-4";
+  "group relative isolate flex w-full max-w-full min-h-[5.5rem] flex-nowrap items-center gap-x-1.5 px-3 py-4 pe-3 sm:min-h-[6rem] sm:gap-x-3 sm:px-4 sm:py-4 sm:pe-4";
 
 export type HmsSeg = "h" | "m" | "s";
 
@@ -159,8 +159,12 @@ export function HmsClock({
     "text-[8px] font-medium uppercase leading-none tracking-[0.14em] text-ds-soft/90 sm:text-[9px] sm:tracking-[0.16em]";
 
   return (
-    <div className="flex flex-col items-center gap-0.5 pl-2 sm:pl-4" role="group" aria-label={`Phase ${phaseLetter} duration ${hh} ${mm} ${ss}`}>
-      <div className="flex items-center justify-center">
+    <div
+      className="flex min-w-0 w-full flex-col items-center gap-0.5 pl-2 sm:pl-4"
+      role="group"
+      aria-label={`Phase ${phaseLetter} duration ${hh} ${mm} ${ss}`}
+    >
+      <div className="flex min-w-0 w-full flex-row flex-nowrap items-center justify-center gap-0">
         <HmsColumn
           padded={hh}
           phaseLetter={phaseLetter}
@@ -262,8 +266,12 @@ export function BigNumber({ label, value, onChange, unitLabel }: BigNumberProps)
     "text-[8px] font-medium uppercase leading-none tracking-[0.14em] text-ds-soft/90 sm:text-[9px] sm:tracking-[0.16em]";
 
   return (
-    <div className="flex flex-col items-center gap-0.5 pl-2 sm:pl-4" role="group" aria-label={`${label} ${value}`}>
-      <div className="flex items-center justify-center">
+    <div
+      className="flex min-w-0 w-full flex-col items-center gap-0.5 pl-2 sm:pl-4"
+      role="group"
+      aria-label={`${label} ${value}`}
+    >
+      <div className="flex min-w-0 w-full flex-row flex-nowrap items-center justify-center">
         <HmsColumn
           padded={padded}
           phaseLetter={label}

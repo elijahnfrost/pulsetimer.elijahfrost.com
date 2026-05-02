@@ -1,7 +1,7 @@
 "use client";
 
 import { useTheme } from "next-themes";
-import { useEffect, useState, type SVGProps } from "react";
+import { useEffect, useState, type KeyboardEvent, type SVGProps } from "react";
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme, systemTheme } = useTheme();
@@ -10,25 +10,35 @@ export function ThemeToggle() {
   useEffect(() => setMounted(true), []);
 
   if (!mounted) {
-    return (
-      <span className="inline-flex size-11 shrink-0 border border-transparent" aria-hidden />
-    );
+    return <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center" aria-hidden />;
   }
 
   /* Match next-themes: resolved theme can be briefly undefined immediately after hydration. */
   const mode = resolvedTheme ?? systemTheme ?? "dark";
   const isLight = mode === "light";
 
+  const apply = () => setTheme(isLight ? "dark" : "light");
+
+  const onKeyDown = (e: KeyboardEvent<HTMLSpanElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      apply();
+    }
+  };
+
+  /* Use a focusable span — native <button> can still draw a focus ring / bezel in WebKit even with CSS resets. */
   return (
-    <button
-      type="button"
+    <span
+      role="button"
+      tabIndex={0}
       data-theme-toggle
-      onClick={() => setTheme(isLight ? "dark" : "light")}
-      className="inline-flex size-10 sm:size-11 shrink-0 cursor-pointer items-center justify-center rounded-sm border border-ds-divider bg-transparent text-ds-soft transition-all duration-ds hover:border-ds-border hover:bg-ds-section/20 hover:text-ds-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] disabled:pointer-events-none disabled:opacity-40"
+      onClick={apply}
+      onKeyDown={onKeyDown}
+      className="inline-flex h-10 w-10 shrink-0 cursor-pointer select-none items-center justify-center text-ds-soft transition-colors duration-ds hover:text-ds-fg focus-visible:text-ds-bright active:opacity-80"
       aria-label={isLight ? "Switch to dark appearance" : "Switch to light appearance"}
     >
       {isLight ? <IconMoon aria-hidden /> : <IconSun aria-hidden />}
-    </button>
+    </span>
   );
 }
 
