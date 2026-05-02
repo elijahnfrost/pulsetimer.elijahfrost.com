@@ -65,3 +65,61 @@ export function totalSecFromHms(hours: number, minutes: number, secondsPart: num
   const p = normalizeHmsParts(hours, minutes, secondsPart);
   return p.hours * 3600 + p.minutes * 60 + p.secondsPart;
 }
+
+function clampTotalSecRaw(sec: number): number {
+  let t = Math.trunc(Number.isFinite(sec) ? sec : 0);
+  if (t < 0) t = 0;
+  if (t > MAX_DURATION_TOTAL_SEC) t = MAX_DURATION_TOTAL_SEC;
+  return t;
+}
+
+/**
+ * Parse a single free-form duration string into total seconds (clamped).
+ *
+ * Supported shapes:
+ * - Bare integer → seconds (e.g. `100` → 1m 40s).
+ * - `H:MM:SS` or `M:SS` (values may overflow; result is normalized/clamped).
+ * - Unit suffixes on a compact string (e.g. `120m`, `2h30m`, `1h2m3s`, `90s`).
+ */
+export function parseDurationInputToTotalSec(raw: string): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  const compact = trimmed.replace(/\s+/g, "").toLowerCase();
+
+  if (/^\d+$/.test(compact)) {
+    return clampTotalSecRaw(parseInt(compact, 10));
+  }
+
+  const colonParts = trimmed.split(":").map((p) => p.trim());
+  if (colonParts.length === 2 && colonParts.every((p) => /^\d+$/.test(p))) {
+    const minutesPart = parseInt(colonParts[0], 10);
+    const secondsPart = parseInt(colonParts[1], 10);
+    return clampTotalSecRaw(minutesPart * 60 + secondsPart);
+  }
+  if (colonParts.length === 3 && colonParts.every((p) => /^\d+$/.test(p))) {
+    const h = parseInt(colonParts[0], 10);
+    const m = parseInt(colonParts[1], 10);
+    const s = parseInt(colonParts[2], 10);
+    return clampTotalSecRaw(h * 3600 + m * 60 + s);
+  }
+
+  const unitSegment =
+    /^(\d+)(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)/;
+  let remaining = compact;
+  let total = 0;
+  let matchedAny = false;
+  while (remaining.length > 0) {
+    const m = remaining.match(unitSegment);
+    if (!m) return null;
+    matchedAny = true;
+    const n = parseInt(m[1], 10);
+    const u = m[2];
+    if (u.startsWith("h")) total += n * 3600;
+    else if (u.startsWith("m")) total += n * 60;
+    else total += n;
+    remaining = remaining.slice(m[0].length);
+  }
+
+  return matchedAny ? clampTotalSecRaw(total) : null;
+}

@@ -1,6 +1,7 @@
 "use client";
 
-import type { CSSProperties } from "react";
+import type { CSSProperties, Ref } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MAX_PATTERN_PHASES } from "@/lib/buildIntervalSchedule";
 import {
   MAX_DURATION_TOTAL_SEC,
@@ -36,14 +37,164 @@ const reorderNudgeClass =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] sm:text-[11px]";
 
 const rowShell =
-  "group relative isolate flex min-h-[5.25rem] flex-nowrap items-center gap-x-2 px-3 py-2.5 ps-[calc(6.5rem+0.125rem)] pe-3 sm:min-h-[6rem] sm:gap-x-4 sm:px-4 sm:py-3 sm:ps-[calc(7.75rem+0.25rem)] sm:pe-4";
+  "group relative isolate flex min-h-[4.5rem] flex-nowrap items-center gap-x-1.5 px-3 py-2 ps-[calc(6.5rem+0.125rem)] pe-3 sm:min-h-[5rem] sm:gap-x-3 sm:px-4 sm:py-2 sm:ps-[calc(7.75rem+0.25rem)] sm:pe-4";
 
-const stepperPairClass =
-  "flex w-full min-w-0 max-w-[4.25rem] overflow-hidden rounded-md border border-ds-divider bg-ds-page shadow-[inset_0_1px_0_rgba(127,119,106,0.06)] sm:max-w-[4.75rem]";
+type HmsSeg = "h" | "m" | "s";
 
-const stepperHitClass =
-  "flex flex-1 items-center justify-center py-2 text-[13px] font-normal leading-none text-ds-soft antialiased transition-colors duration-ds hover:bg-ds-section/55 hover:text-ds-fg active:bg-ds-section/70 disabled:pointer-events-none disabled:opacity-[0.25] sm:py-2.5 sm:text-sm " +
-  "focus-visible:relative focus-visible:z-10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--color-fg-muted)]";
+/** Hover-only on fine pointers: arrows hidden until pointer is over the column (no focus-within — avoids sticky visibility after click). */
+const segArrowShow = {
+  hcol:
+    "opacity-100 transition-opacity duration-150 ease-out motion-reduce:transition-none " +
+    "[@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:opacity-0 " +
+    "[@media(hover:hover)]:group-hover/hcol:pointer-events-auto [@media(hover:hover)]:group-hover/hcol:opacity-100 " +
+    "[@media(hover:hover)]:group-hover/hcol:disabled:opacity-[0.34]",
+  mcol:
+    "opacity-100 transition-opacity duration-150 ease-out motion-reduce:transition-none " +
+    "[@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:opacity-0 " +
+    "[@media(hover:hover)]:group-hover/mcol:pointer-events-auto [@media(hover:hover)]:group-hover/mcol:opacity-100 " +
+    "[@media(hover:hover)]:group-hover/mcol:disabled:opacity-[0.34]",
+  scol:
+    "opacity-100 transition-opacity duration-150 ease-out motion-reduce:transition-none " +
+    "[@media(hover:hover)]:pointer-events-none [@media(hover:hover)]:opacity-0 " +
+    "[@media(hover:hover)]:group-hover/scol:pointer-events-auto [@media(hover:hover)]:group-hover/scol:opacity-100 " +
+    "[@media(hover:hover)]:group-hover/scol:disabled:opacity-[0.34]",
+} as const;
+
+const segArrowBtn =
+  "flex h-8 min-h-8 w-full max-w-none items-center justify-center rounded-md text-sm font-semibold leading-none text-ds-muted " +
+  "transition-[color,background-color,opacity] duration-ds hover:bg-ds-section/45 hover:text-ds-fg active:bg-ds-section/55 " +
+  "disabled:pointer-events-none disabled:text-ds-soft/45 disabled:hover:bg-transparent " +
+  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-fg-muted)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-page)]";
+
+/** Segment column width — matches labels row below. */
+const hmsSegGridClass = "w-[2.75rem] shrink-0 sm:w-[3rem]";
+/** Narrow column for colon + label spacer so Hr/Min/Sec stay centered under digits. */
+const hmsColonTrackClass = "w-[0.5rem] shrink-0 sm:w-[0.62rem]";
+
+const digitShell =
+  "min-h-[1.05em] min-w-[2.35ch] text-center font-mono text-[clamp(1.6rem,3.8vmin,2.1rem)] font-medium leading-none tracking-[-0.02em] text-ds-fg tabular-nums";
+
+const hmsEditInputClass =
+  `${digitShell} z-[1] m-0 w-[3.25ch] max-w-[4rem] border-0 border-b border-ds-hover/80 bg-transparent p-0 pb-px text-ds-fg outline-none ` +
+  "placeholder:text-ds-soft/50 focus-visible:border-ds-fg/40";
+
+const hmsReadoutBtnClass =
+  `${digitShell} rounded-md px-0.5 outline-none transition-colors duration-ds ` +
+  "hover:bg-ds-section/28 focus-visible:bg-ds-section/28 focus-visible:ring-2 focus-visible:ring-[var(--color-fg-muted)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-bg-page)]";
+
+type HmsColumnProps = {
+  groupClass: "group/hcol" | "group/mcol" | "group/scol";
+  arrowShow: string;
+  padded: string;
+  decLabel: string;
+  incLabel: string;
+  onDec: () => void;
+  onInc: () => void;
+  decDisabled: boolean;
+  incDisabled: boolean;
+  atCap: boolean;
+  phaseLetter: string;
+  editing: boolean;
+  draft: string;
+  onDraftChange: (next: string) => void;
+  onOpen: () => void;
+  onCommit: () => void;
+  onCancel: () => void;
+  inputRef: Ref<HTMLInputElement>;
+};
+
+function HmsColumn({
+  groupClass,
+  arrowShow,
+  padded,
+  decLabel,
+  incLabel,
+  onDec,
+  onInc,
+  decDisabled,
+  incDisabled,
+  atCap,
+  phaseLetter,
+  editing,
+  draft,
+  onDraftChange,
+  onOpen,
+  onCommit,
+  onCancel,
+  inputRef,
+}: HmsColumnProps) {
+  const unitShort = incLabel.includes("hours") ? "Hr" : incLabel.includes("minutes") ? "Min" : "Sec";
+
+  return (
+    <div
+      className={`${groupClass} ${hmsSegGridClass} flex flex-col items-center gap-0 px-0 pt-1`}
+      onMouseLeave={(e) => {
+        const root = e.currentTarget;
+        const a = document.activeElement;
+        if (!(a instanceof HTMLElement) || !root.contains(a)) return;
+        if (a.tagName !== "BUTTON") return;
+        a.blur();
+      }}
+    >
+      <button
+        type="button"
+        className={`${segArrowBtn} ${arrowShow}`}
+        aria-label={incLabel}
+        disabled={atCap || incDisabled}
+        onClick={onInc}
+      >
+        ▲
+      </button>
+
+      <div className="relative flex min-h-[1.05em] items-center justify-center">
+        {editing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            inputMode="numeric"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            aria-label={`${unitShort} for phase ${phaseLetter}`}
+            className={hmsEditInputClass}
+            value={draft}
+            onChange={(e) => onDraftChange(e.target.value.replace(/\D/g, ""))}
+            onBlur={() => onCommit()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                onCommit();
+              }
+              if (e.key === "Escape") {
+                e.preventDefault();
+                onCancel();
+              }
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            className={hmsReadoutBtnClass}
+            aria-label={`${unitShort} ${padded}. Click to type.`}
+            onClick={onOpen}
+          >
+            {padded}
+          </button>
+        )}
+      </div>
+
+      <button
+        type="button"
+        className={`${segArrowBtn} ${arrowShow}`}
+        aria-label={decLabel}
+        disabled={decDisabled}
+        onClick={onDec}
+      >
+        ▼
+      </button>
+    </div>
+  );
+}
 
 type HmsClockProps = {
   phaseLetter: string;
@@ -51,6 +202,7 @@ type HmsClockProps = {
   minutes: number;
   seconds: number;
   totalSec: number;
+  onSetHms: (hours: number, minutes: number, secondsPart: number) => void;
   hourDec: () => void;
   hourInc: () => void;
   minDec: () => void;
@@ -63,7 +215,7 @@ type HmsClockProps = {
 };
 
 /**
- * One framed readout: large HH : MM : SS line, then a single row of three balanced stepper pairs (no triple “sandwich” chrome).
+ * Large HH:MM:SS readout; no outer frame. Each column shows ↑↓ only for that column on hover (or focus-within); click digits to type that unit (overflow normalizes).
  */
 function HmsClock({
   phaseLetter,
@@ -71,6 +223,7 @@ function HmsClock({
   minutes,
   seconds,
   totalSec,
+  onSetHms,
   hourDec,
   hourInc,
   minDec,
@@ -86,105 +239,126 @@ function HmsClock({
   const ss = String(seconds).padStart(2, "0");
   const atCap = totalSec >= MAX_DURATION_TOTAL_SEC;
 
+  const [activeSeg, setActiveSeg] = useState<HmsSeg | null>(null);
+  const [draft, setDraft] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (activeSeg && inputRef.current) {
+      inputRef.current.focus();
+      inputRef.current.select();
+    }
+  }, [activeSeg]);
+
+  const openSeg = (seg: HmsSeg, current: number) => {
+    setActiveSeg(seg);
+    setDraft(String(current));
+  };
+
+  const cancelSeg = () => {
+    setActiveSeg(null);
+    setDraft("");
+  };
+
+  const commitSeg = (seg: HmsSeg) => {
+    const t = draft.trim();
+    setActiveSeg(null);
+    setDraft("");
+    if (t === "") return;
+    const n = Number.parseInt(t, 10);
+    if (!Number.isFinite(n) || n < 0) return;
+    if (seg === "h") onSetHms(n, minutes, seconds);
+    else if (seg === "m") onSetHms(hours, n, seconds);
+    else onSetHms(hours, minutes, n);
+  };
+
+  const colonClassName = `${hmsColonTrackClass} flex select-none items-center justify-center font-mono text-[clamp(1.6rem,3.8vmin,2.1rem)] font-extralight leading-none tracking-[-0.02em] text-ds-muted/60`;
+
+  const labelRowClass =
+    "text-[8px] font-medium uppercase leading-none tracking-[0.14em] text-ds-soft/90 sm:text-[9px] sm:tracking-[0.16em]";
+
   return (
-    <div
-      className="w-full max-w-[min(100%,17.5rem)] rounded-xl border border-ds-divider bg-ds-section/15 px-3 py-2.5 shadow-[inset_0_1px_0_rgba(127,119,106,0.09)] sm:max-w-none sm:px-4 sm:py-3"
-      role="group"
-      aria-label={`Phase ${phaseLetter} duration`}
-    >
-      <p
-        className="mb-2.5 text-center font-mono text-[1.375rem] font-medium leading-none tracking-[-0.02em] text-ds-fg tabular-nums sm:mb-3 sm:text-[1.625rem]"
-        aria-live="polite"
-      >
-        <span className="inline-block min-w-[2ch] text-right">{hh}</span>
-        <span className="mx-0.5 inline-block text-[0.92em] font-light text-ds-muted/70 sm:mx-1" aria-hidden>
+    <div className="flex flex-col items-center gap-0.5" role="group" aria-label={`Phase ${phaseLetter} duration ${hh} ${mm} ${ss}`}>
+      <div className="flex items-center justify-center">
+        <HmsColumn
+          groupClass="group/hcol"
+          arrowShow={segArrowShow.hcol}
+          padded={hh}
+          decLabel={`Phase ${phaseLetter} — decrease hours`}
+          incLabel={`Phase ${phaseLetter} — increase hours`}
+          onDec={hourDec}
+          onInc={hourInc}
+          decDisabled={totalSec < 3600}
+          incDisabled={hourIncBlocked}
+          atCap={atCap}
+          phaseLetter={phaseLetter}
+          editing={activeSeg === "h"}
+          draft={draft}
+          onDraftChange={setDraft}
+          onOpen={() => openSeg("h", hours)}
+          onCommit={() => commitSeg("h")}
+          onCancel={cancelSeg}
+          inputRef={inputRef}
+        />
+        <span className={colonClassName} aria-hidden>
           :
         </span>
-        <span className="inline-block min-w-[2ch] text-right">{mm}</span>
-        <span className="mx-0.5 inline-block text-[0.92em] font-light text-ds-muted/70 sm:mx-1" aria-hidden>
+        <HmsColumn
+          groupClass="group/mcol"
+          arrowShow={segArrowShow.mcol}
+          padded={mm}
+          decLabel={`Phase ${phaseLetter} — decrease minutes`}
+          incLabel={`Phase ${phaseLetter} — increase minutes`}
+          onDec={minDec}
+          onInc={minInc}
+          decDisabled={totalSec < 60}
+          incDisabled={minIncBlocked}
+          atCap={atCap}
+          phaseLetter={phaseLetter}
+          editing={activeSeg === "m"}
+          draft={draft}
+          onDraftChange={setDraft}
+          onOpen={() => openSeg("m", minutes)}
+          onCommit={() => commitSeg("m")}
+          onCancel={cancelSeg}
+          inputRef={inputRef}
+        />
+        <span className={colonClassName} aria-hidden>
           :
         </span>
-        <span className="inline-block min-w-[2ch] text-right">{ss}</span>
-      </p>
-
-      <div className="grid grid-cols-[1fr_1fr_1fr] gap-x-2 sm:gap-x-3">
-        <div className="flex min-w-0 flex-col items-center gap-1">
-          <div className={stepperPairClass}>
-            <button
-              type="button"
-              className={`${stepperHitClass} border-e border-ds-divider/80`}
-              aria-label={`Phase ${phaseLetter} — decrease hours`}
-              disabled={totalSec < 3600}
-              onClick={hourDec}
-            >
-              −
-            </button>
-            <button
-              type="button"
-              className={stepperHitClass}
-              aria-label={`Phase ${phaseLetter} — increase hours`}
-              disabled={atCap || hourIncBlocked}
-              onClick={hourInc}
-            >
-              +
-            </button>
-          </div>
-          <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-ds-soft sm:text-[10px] sm:tracking-[0.18em]">
-            Hr
-          </span>
-        </div>
-
-        <div className="flex min-w-0 flex-col items-center gap-1">
-          <div className={stepperPairClass}>
-            <button
-              type="button"
-              className={`${stepperHitClass} border-e border-ds-divider/80`}
-              aria-label={`Phase ${phaseLetter} — decrease minutes`}
-              disabled={totalSec < 60}
-              onClick={minDec}
-            >
-              −
-            </button>
-            <button
-              type="button"
-              className={stepperHitClass}
-              aria-label={`Phase ${phaseLetter} — increase minutes`}
-              disabled={atCap || minIncBlocked}
-              onClick={minInc}
-            >
-              +
-            </button>
-          </div>
-          <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-ds-soft sm:text-[10px] sm:tracking-[0.18em]">
-            Min
-          </span>
-        </div>
-
-        <div className="flex min-w-0 flex-col items-center gap-1">
-          <div className={stepperPairClass}>
-            <button
-              type="button"
-              className={`${stepperHitClass} border-e border-ds-divider/80`}
-              aria-label={`Phase ${phaseLetter} — decrease seconds`}
-              disabled={totalSec < 1}
-              onClick={secDec}
-            >
-              −
-            </button>
-            <button
-              type="button"
-              className={stepperHitClass}
-              aria-label={`Phase ${phaseLetter} — increase seconds`}
-              disabled={atCap || secIncBlocked}
-              onClick={secInc}
-            >
-              +
-            </button>
-          </div>
-          <span className="text-[9px] font-medium uppercase tracking-[0.16em] text-ds-soft sm:text-[10px] sm:tracking-[0.18em]">
-            Sec
-          </span>
-        </div>
+        <HmsColumn
+          groupClass="group/scol"
+          arrowShow={segArrowShow.scol}
+          padded={ss}
+          decLabel={`Phase ${phaseLetter} — decrease seconds`}
+          incLabel={`Phase ${phaseLetter} — increase seconds`}
+          onDec={secDec}
+          onInc={secInc}
+          decDisabled={totalSec < 1}
+          incDisabled={secIncBlocked}
+          atCap={atCap}
+          phaseLetter={phaseLetter}
+          editing={activeSeg === "s"}
+          draft={draft}
+          onDraftChange={setDraft}
+          onOpen={() => openSeg("s", seconds)}
+          onCommit={() => commitSeg("s")}
+          onCancel={cancelSeg}
+          inputRef={inputRef}
+        />
+      </div>
+      <div className="flex justify-center pt-px" aria-hidden>
+        <span className={`${hmsSegGridClass} flex justify-center`}>
+          <span className={labelRowClass}>Hr</span>
+        </span>
+        <span className={hmsColonTrackClass} />
+        <span className={`${hmsSegGridClass} flex justify-center`}>
+          <span className={labelRowClass}>Min</span>
+        </span>
+        <span className={hmsColonTrackClass} />
+        <span className={`${hmsSegGridClass} flex justify-center`}>
+          <span className={labelRowClass}>Sec</span>
+        </span>
       </div>
     </div>
   );
@@ -261,6 +435,7 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
                 minutes={slot.minutes}
                 seconds={slot.secondsPart}
                 totalSec={totalSec}
+                onSetHms={(h, m, s) => applyPhaseTotalSec(idx, totalSecFromHms(h, m, s))}
                 hourDec={() => bump(-3600)}
                 hourInc={() => bump(3600)}
                 minDec={() => bump(-60)}
