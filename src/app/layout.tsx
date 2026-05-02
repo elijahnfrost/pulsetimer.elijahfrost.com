@@ -6,7 +6,7 @@ import { Providers } from "@/components/Providers";
 const inter = Inter({
   subsets: ["latin"],
   variable: "--font-inter",
-  weight: ["300", "400", "500", "600"],
+  weight: ["100", "200", "300", "400", "500", "600"],
 });
 
 const cormorant = Cormorant_Garamond({

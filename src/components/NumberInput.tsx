@@ -20,6 +20,12 @@ type Props = {
   labelAlign?: "center" | "start";
   /** Extra classes on the outer wrapper */
   className?: string;
+  /** Smaller compact row: hairline controls (e.g. pattern phase durations). */
+  density?: "default" | "dense";
+  /** Dense only: narrower value cell (e.g. seconds 0–59). */
+  narrow?: boolean;
+  /** Dense only: fill horizontal space in flex layouts (value field flexes). */
+  grow?: boolean;
   /**
    * When false, only coerces to a non-negative integer; min/max are not applied to values
    * (use for fields where a parent normalizes overflow, e.g. seconds → minutes).
@@ -58,6 +64,9 @@ export function NumberInput({
   layout = "compact",
   labelAlign = "center",
   className = "",
+  density = "default",
+  narrow = false,
+  grow = false,
 }: Props) {
   const [textDraft, setTextDraft] = useState<string | null>(null);
 
@@ -93,14 +102,24 @@ export function NumberInput({
   };
 
   const fill = layout === "fill";
+  const isDense = density === "dense" && !fill;
+  const denseGrow = isDense && grow;
 
   const inputClassName =
-    `bg-transparent text-center font-mono text-base text-ds-fg outline-none transition-colors duration-100 ` +
-    `placeholder:text-ds-label [appearance:textfield] focus:border-transparent sm:text-lg ` +
+    `bg-transparent text-center text-ds-fg outline-none transition-colors duration-100 ` +
+    `placeholder:text-ds-label [appearance:textfield] focus:border-transparent ` +
     `[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none ` +
     (fill
-      ? "h-12 w-full min-w-0 shrink-0 border-0 tabular-nums"
-      : "h-12 w-14 shrink-0 border-x border-ds-divider sm:w-16");
+      ? "h-12 w-full min-w-0 shrink-0 border-0 font-mono text-base tabular-nums sm:text-lg "
+      : denseGrow && narrow
+        ? "h-10 min-w-[2.9rem] flex-1 border-x border-ds-divider font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:min-w-[3.2rem] sm:text-[1.0625rem] "
+        : denseGrow
+          ? "h-10 min-w-[3.4rem] flex-1 border-x border-ds-divider font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:min-w-[3.85rem] sm:text-[1.0625rem] "
+          : isDense && narrow
+            ? "h-10 w-[3rem] shrink-0 border-x border-ds-divider font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:w-[3.35rem] sm:text-[1.0625rem] "
+            : isDense
+              ? "h-10 w-[3.65rem] shrink-0 border-x border-ds-divider font-sans text-base font-[100] tabular-nums leading-none antialiased sm:h-11 sm:w-[4rem] sm:text-[1.0625rem] "
+              : "h-12 w-14 shrink-0 border-x border-ds-divider font-mono text-base tabular-nums sm:w-16 sm:text-lg ");
 
   const inputEl = (
     <input
@@ -137,14 +156,20 @@ export function NumberInput({
   return (
     <div
       className={[
-        fill ? "flex min-w-0 w-full flex-col gap-2" : "flex flex-col items-center gap-2",
+        fill
+          ? "flex min-w-0 w-full flex-col gap-2"
+          : isDense
+            ? denseGrow
+              ? "flex min-w-0 w-full flex-col items-stretch gap-1.5"
+              : "flex flex-col items-center gap-1.5"
+            : "flex flex-col items-center gap-2",
         className,
       ]
         .filter(Boolean)
         .join(" ")}
     >
       <span
-        className={`text-[11px] uppercase tracking-[0.14em] text-ds-soft sm:tracking-[0.16em] ${fill ? (labelAlign === "start" ? "block w-full text-left" : "block w-full text-center") : ""}`}
+        className={`uppercase text-ds-soft ${isDense ? `text-[10px] font-light tracking-[0.13em] sm:text-[11px] sm:tracking-[0.15em] ${denseGrow ? "block w-full text-center" : ""}` : "text-[11px] tracking-[0.14em] sm:tracking-[0.16em]"} ${fill ? (labelAlign === "start" ? "block w-full text-left" : "block w-full text-center") : ""}`}
       >
         {label}
       </span>
@@ -182,10 +207,12 @@ export function NumberInput({
           </button>
         </div>
       ) : (
-        <div className="flex overflow-hidden border border-ds-section bg-ds-page focus-within:border-ds-hover">
+        <div
+          className={`${denseGrow ? "flex w-full min-w-0" : "flex"} overflow-hidden rounded-md bg-ds-page focus-within:border-ds-hover ${isDense ? "border border-ds-divider" : "border border-ds-section"}`}
+        >
           <button
             type="button"
-            className={`${stepperBtnClasses} h-12 w-11 shrink-0`}
+            className={`${stepperBtnClasses} shrink-0 ${isDense ? "h-10 w-10 font-[200] text-[1.125rem] leading-none text-ds-soft sm:h-11 sm:w-11 sm:text-[1.25rem]" : "h-12 w-11"}`}
             aria-label={`Decrease ${label}`}
             disabled={decDisabled}
             onClick={() => {
@@ -198,7 +225,7 @@ export function NumberInput({
           {inputEl}
           <button
             type="button"
-            className={`${stepperBtnClasses} h-12 w-11 shrink-0`}
+            className={`${stepperBtnClasses} shrink-0 ${isDense ? "h-10 w-10 font-[200] text-[1.125rem] leading-none text-ds-soft sm:h-11 sm:w-11 sm:text-[1.25rem]" : "h-12 w-11"}`}
             aria-label={`Increase ${label}`}
             disabled={incDisabled}
             onClick={() => {

@@ -607,16 +607,16 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       {phase !== "complete" && phase !== "play" && (
         <section
           aria-label="Interval setup"
-          className="mx-auto w-full min-w-0 max-w-6xl px-4 py-10 sm:px-10"
+          className="mx-auto w-full min-w-0 max-w-7xl px-4 py-10 sm:px-10"
         >
           <div
             className={
-              setupIntervals.length
-                ? "lg:grid lg:min-h-0 lg:grid-cols-3 lg:items-start lg:gap-x-12 lg:gap-y-0"
-                : ""
+              setupIntervals.length > 0
+                ? "lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:items-start lg:gap-x-10 lg:gap-y-0 xl:gap-x-14"
+                : "lg:w-full"
             }
           >
-            <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-10 lg:col-span-2 lg:mx-0 lg:max-w-2xl">
+            <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-10 sm:max-w-lg lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1">
               <div className="flex flex-col gap-4">
                 <SetupSectionTitle step={1}>Schedule</SetupSectionTitle>
                 <SegmentedControl
@@ -647,7 +647,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 <div
                   className={`grid w-full min-w-0 gap-4 [&>*]:min-w-0 ${
                     showSessionDuration
-                      ? "max-w-xl grid-cols-1 sm:grid-cols-3"
+                      ? "max-w-2xl grid-cols-1 justify-items-stretch sm:grid-cols-3 sm:justify-items-start sm:gap-x-5 [&>*]:sm:max-w-[11.25rem]"
                       : "max-w-[17.5rem] grid-cols-1 justify-items-start sm:max-w-xs"
                   }`}
                 >
@@ -757,7 +757,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                   "mt-8 flex min-h-0 min-w-0 flex-col border-t border-ds-divider pt-6",
                   /* Viewport-capped height → list scrolls inside, not via page body */
                   "h-[min(68dvh,calc(100dvh-12rem))] max-h-[calc(100dvh-12rem)]",
-                  "lg:col-span-1 lg:mt-0 lg:sticky lg:top-[max(0.75rem,calc(5.25rem+env(safe-area-inset-top)))] lg:z-10 lg:self-start",
+                  "lg:mt-0 lg:sticky lg:top-[max(0.75rem,calc(5.25rem+env(safe-area-inset-top)))] lg:z-10 lg:self-start",
                   "lg:h-[calc(100dvh-6.5rem)] lg:max-h-[calc(100dvh-6.5rem)]",
                   "lg:border-t-0 lg:pl-4 lg:pt-0",
                 ].join(" ")}
