@@ -36,44 +36,45 @@ export const scheduleTransportBaseClass =
   `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]`;
 
 /** Full-width Start row (legacy — prefer {@link scheduleHeaderBarShellClass} + actions). */
-const session =
-  `${scheduleTransportBaseClass} w-full justify-between gap-3 px-0 sm:gap-4`;
+const session = `${scheduleTransportBaseClass} w-full justify-between gap-3 px-0 sm:gap-4`;
 
 /** Compact Pause / Resume / Stop in the schedule header — same divider language. */
-export const scheduleTransportChipClass =
-  `${scheduleTransportBaseClass} shrink-0 justify-center gap-2 px-2 sm:min-w-[5.75rem] sm:px-3`;
+export const scheduleTransportChipClass = `${scheduleTransportBaseClass} shrink-0 justify-center gap-2 px-2 sm:min-w-[5.75rem] sm:px-3`;
 
 /** Narrow chip (e.g. Stop) when you want a shorter min-width than `scheduleTransportChipClass`. */
-export const scheduleTransportChipCompactClass =
-  `${scheduleTransportBaseClass} shrink-0 justify-center gap-1.5 px-2 sm:min-w-0 sm:px-2.5`;
+export const scheduleTransportChipCompactClass = `${scheduleTransportBaseClass} shrink-0 justify-center gap-1.5 px-2 sm:min-w-0 sm:px-2.5`;
 
 /**
- * Idle + playback share this row: transports on the start edge, monospaced clock on the trailing
- * edge — only values and labels change; geometry stays put.
+ * Shared transport shell for setup + playback. Three fixed slots keep geometry stable:
+ * primary action, stop slot (reserved in setup), and trailing session clock.
  */
-export const scheduleHeaderBarShellClass =
-  `flex min-h-[3.875rem] w-full min-w-0 flex-nowrap items-center justify-between gap-3 ` +
-  `overflow-x-auto overflow-y-visible [scrollbar-width:thin] ` +
-  `border-0 border-b border-ds-divider pb-3 sm:min-h-[4.125rem] sm:gap-4`;
+export const scheduleTransportBarShellClass =
+  `grid w-full min-w-0 grid-cols-[6.25rem_4.75rem_minmax(11ch,1fr)] items-center gap-1.5 border-b border-ds-divider pb-2.5 ` +
+  `sm:grid-cols-[6.5rem_5rem_minmax(13ch,1fr)]`;
 
-/** Trailing session clock — reserved width so elapsed/total doesn’t jump the row. */
-export const scheduleHeaderTimeClass =
-  `shrink-0 min-w-[13ch] text-right font-mono text-[0.8125rem] tabular-nums leading-none tracking-tight text-ds-muted sm:text-sm`;
+/** Monospaced session clock slot with reserved width to avoid elapsed/total shifts. */
+export const scheduleTransportTimeClass = `justify-self-end ps-2 text-right font-mono text-[0.8125rem] tabular-nums leading-none tracking-tight text-ds-muted sm:text-sm`;
 
-/** Primary header control (Start / Pause / Resume): ~48px target, no bottom border (shell handles divider). */
+/** Back-compat aliases (existing callers can keep imports while sharing one transport geometry). */
+export const scheduleHeaderBarShellClass = scheduleTransportBarShellClass;
+export const schedulePlaybackHeaderShellClass = scheduleTransportBarShellClass;
+export const scheduleHeaderTimeClass = scheduleTransportTimeClass;
+export const schedulePlaybackTimeRowClass = scheduleTransportTimeClass;
+
+/** Primary header control (Start / Pause / Resume): filled pill reads as main CTA vs body copy / ring rows. */
 export const scheduleBarPrimaryActionClass =
-  `inline-flex shrink-0 items-center justify-center gap-2.5 rounded-none bg-transparent ` +
-  `px-4 py-3 text-base font-normal leading-none tracking-tight text-ds-fg sm:px-5 ` +
-  `min-h-12 min-w-[8.5rem] whitespace-nowrap ` +
-  `transition-colors duration-ds hover:bg-ds-section/25 active:bg-ds-section/35 ` +
+  `inline-flex min-h-[38px] w-full shrink-0 items-center justify-center gap-1.5 rounded ` +
+  `border border-ds-fg/12 bg-ds-fg px-2.5 py-1.5 text-sm font-medium leading-none text-ds-page ` +
+  `whitespace-nowrap transition-[background-color,opacity,border-color] duration-ds ` +
+  `hover:opacity-95 active:opacity-90 ` +
   `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)] ` +
   `disabled:pointer-events-none disabled:opacity-40`;
 
 export const scheduleBarSecondaryActionClass =
-  `inline-flex shrink-0 items-center justify-center gap-2 rounded-none bg-transparent ` +
-  `px-3 py-3 text-base font-normal leading-none tracking-tight text-ds-fg sm:px-4 ` +
-  `min-h-12 min-w-[6.75rem] whitespace-nowrap ` +
-  `transition-colors duration-ds hover:bg-ds-section/25 active:bg-ds-section/35 ` +
+  `inline-flex min-h-[38px] w-full shrink-0 items-center justify-center gap-1.5 rounded ` +
+  `border border-ds-divider bg-transparent px-2.5 py-1.5 text-sm font-medium leading-none text-ds-soft ` +
+  `whitespace-nowrap transition-[background-color,border-color,color,opacity] duration-ds ` +
+  `hover:border-ds-border hover:bg-ds-section/20 hover:text-ds-fg active:opacity-90 ` +
   `focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-fg-muted)]`;
 
 /** Shared surfaces for `ControlButton` and layout-heavy callers (split rows, full-width session CTAs). */
@@ -113,7 +114,9 @@ type RowProps = {
 export function ControlsRow({ children, className = "" }: RowProps) {
   return (
     <div
-      className={["flex flex-wrap items-center justify-center gap-3", className].filter(Boolean).join(" ")}
+      className={["flex flex-wrap items-center justify-center gap-3", className]
+        .filter(Boolean)
+        .join(" ")}
     >
       {children}
     </div>

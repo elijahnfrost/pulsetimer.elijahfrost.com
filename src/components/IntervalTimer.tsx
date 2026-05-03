@@ -1,6 +1,13 @@
 "use client";
 
-import { MutableRefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  MutableRefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ShortcutHandles } from "@/types/hotkeys";
 import {
   MAX_PATTERN_PHASES,
@@ -42,7 +49,17 @@ import { SetupSubStepTitle } from "./SetupSectionTitle";
 import { VariabilitySlider } from "./VariabilitySlider";
 
 const CheckIcon = ({ className }: { className?: string }) => (
-  <svg className={className} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    className={className}
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <polyline points="20 6 9 17 4 12" />
   </svg>
 );
@@ -66,7 +83,14 @@ const PlayStrokeIcon = ({ className }: { className?: string }) => (
 );
 
 const PauseFillIcon = ({ className }: { className?: string }) => (
-  <svg className={className} width="11" height="11" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+  <svg
+    className={className}
+    width="11"
+    height="11"
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden
+  >
     <rect x="6" y="5" width="4.75" height="14" rx="1" opacity="0.92" />
     <rect x="13.25" y="5" width="4.75" height="14" rx="1" opacity="0.92" />
   </svg>
@@ -87,33 +111,106 @@ const StopStrokeIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
-function IntervalScheduleHeaderStart({
+function IntervalScheduleTransportBar({
+  state,
   totalMs,
-  disabled,
-  onClick,
+  elapsedMs,
+  startDisabled,
+  onStart,
+  onPause,
+  onResume,
+  onStop,
 }: {
+  state: "setup" | "running" | "paused";
   totalMs: number;
-  disabled: boolean;
-  onClick: () => void;
+  elapsedMs: number;
+  startDisabled?: boolean;
+  onStart?: () => void;
+  onPause?: () => void;
+  onResume?: () => void;
+  onStop?: () => void;
 }) {
+  const playing = state !== "setup";
+
+  const primaryLabel =
+    state === "running" ? "Pause" : state === "paused" ? "Resume" : "Start";
+
+  const onPrimaryClick =
+    state === "running" ? onPause : state === "paused" ? onResume : onStart;
+
   return (
     <div className={scheduleHeaderBarShellClass}>
       <button
         type="button"
         className={scheduleBarPrimaryActionClass}
-        aria-label="Start interval session"
-        disabled={disabled}
-        onClick={onClick}
+        aria-label={`${primaryLabel} interval session`}
+        disabled={state === "setup" ? startDisabled : false}
+        onClick={onPrimaryClick}
       >
-        <PlayStrokeIcon className="h-[15px] w-[15px] shrink-0 text-ds-soft sm:h-4 sm:w-4" />
-        <span>Start</span>
+        {state === "running" ? (
+          <PauseFillIcon className="h-[13px] w-[13px] shrink-0 text-current" />
+        ) : (
+          <PlayStrokeIcon className="h-[13px] w-[13px] shrink-0 text-current" />
+        )}
+        <span>{primaryLabel}</span>
       </button>
-      <span className={scheduleHeaderTimeClass}>{formatMmSs(totalMs)}</span>
+
+      {playing ? (
+        <button
+          type="button"
+          className={scheduleBarSecondaryActionClass}
+          aria-label="Stop session"
+          onClick={onStop}
+        >
+          <StopStrokeIcon className="h-[13px] w-[13px] shrink-0 text-current" />
+          <span>Stop</span>
+        </button>
+      ) : (
+        <span
+          className={`${scheduleBarSecondaryActionClass} pointer-events-none invisible`}
+          aria-hidden
+        >
+          Stop
+        </span>
+      )}
+
+      <p
+        className={scheduleHeaderTimeClass}
+        role={playing ? "progressbar" : undefined}
+        aria-valuemin={playing ? 0 : undefined}
+        aria-valuemax={playing ? 100 : undefined}
+        aria-valuenow={
+          playing ? Math.round(totalMs > 0 ? (elapsedMs / totalMs) * 100 : 0) : undefined
+        }
+        aria-valuetext={
+          playing
+            ? `${formatMmSs(elapsedMs)} elapsed of ${formatMmSs(totalMs)}`
+            : undefined
+        }
+      >
+        {formatMmSs(Math.max(0, elapsedMs))}
+        <span className="text-ds-dim"> / </span>
+        {formatMmSs(Math.max(0, totalMs))}
+      </p>
     </div>
   );
 }
 
-function BigOption({ label, title, description, isActive, onClick, borderBottom }: { label: string, title: string, description?: string, isActive: boolean, onClick: () => void, borderBottom?: boolean }) {
+function BigOption({
+  label,
+  title,
+  description,
+  isActive,
+  onClick,
+  borderBottom,
+}: {
+  label: string;
+  title: string;
+  description?: string;
+  isActive: boolean;
+  onClick: () => void;
+  borderBottom?: boolean;
+}) {
   return (
     <BigRow
       label={label}
@@ -121,15 +218,23 @@ function BigOption({ label, title, description, isActive, onClick, borderBottom 
       isActive={isActive}
       borderBottom={borderBottom}
       rightAction={
-        isActive ? <CheckIcon className="h-6 w-6 text-ds-fg" /> : <div className="h-6 w-6" />
+        isActive ? (
+          <CheckIcon className="h-6 w-6 text-ds-fg" />
+        ) : (
+          <div className="h-6 w-6" />
+        )
       }
     >
       <div className="flex flex-col gap-1 pl-2 sm:pl-4">
-        <span className={`font-mono text-[clamp(1.1rem,2.5vmin,1.4rem)] uppercase tracking-[0.08em] ${isActive ? "text-ds-fg font-medium" : "text-ds-soft font-light"}`}>
+        <span
+          className={`font-mono text-[clamp(1.1rem,2.5vmin,1.4rem)] uppercase tracking-[0.08em] ${isActive ? "text-ds-fg font-medium" : "text-ds-soft font-light"}`}
+        >
           {title}
         </span>
         {description && (
-          <span className={`text-[10px] sm:text-[11px] uppercase tracking-[0.1em] ${isActive ? "text-ds-soft" : "text-ds-muted"}`}>
+          <span
+            className={`text-[10px] sm:text-[11px] uppercase tracking-[0.1em] ${isActive ? "text-ds-soft" : "text-ds-muted"}`}
+          >
             {description}
           </span>
         )}
@@ -152,14 +257,12 @@ type PersistShapeV1 = {
   variabilityPct: number;
   scheduleMs: number[] | null;
   phase: "setup" | "play" | "complete";
-  resume:
-    | null
-    | {
-        index: number;
-        segmentDeadlineTs: number | null;
-        pausedRemainMs: number | null;
-        actualMs: number[];
-      };
+  resume: null | {
+    index: number;
+    segmentDeadlineTs: number | null;
+    pausedRemainMs: number | null;
+    actualMs: number[];
+  };
 };
 
 type PersistShape = {
@@ -176,14 +279,12 @@ type PersistShape = {
   variabilityPct: number;
   scheduleMs: number[] | null;
   phase: "setup" | "play" | "complete";
-  resume:
-    | null
-    | {
-        index: number;
-        segmentDeadlineTs: number | null;
-        pausedRemainMs: number | null;
-        actualMs: number[];
-      };
+  resume: null | {
+    index: number;
+    segmentDeadlineTs: number | null;
+    pausedRemainMs: number | null;
+    actualMs: number[];
+  };
 };
 
 function defaultPatternSlots(): PatternPhasePersist[] {
@@ -199,9 +300,7 @@ function normalizePatternSlots(raw: unknown): PatternPhasePersist[] {
   for (let i = 0; i < Math.min(MAX_PATTERN_PHASES, raw.length); i++) {
     const item = raw[i] as { hours?: number; minutes?: number; secondsPart?: number };
     if (typeof item.hours === "number") {
-      out.push(
-        normalizeHmsParts(item.hours, item.minutes ?? 0, item.secondsPart ?? 0)
-      );
+      out.push(normalizeHmsParts(item.hours, item.minutes ?? 0, item.secondsPart ?? 0));
     } else {
       const norm = normalizeDurationParts(item?.minutes ?? 0, item?.secondsPart ?? 0);
       out.push(normalizeHmsParts(0, norm.minutes, norm.secondsPart));
@@ -239,7 +338,8 @@ function parseStored(json: unknown): PersistShape | null {
   if (typeof json !== "object" || json === null) return null;
   const o = json as Record<string, unknown>;
   if (o.version === 2) {
-    const scheduleMode: ScheduleMode = o.scheduleMode === "pattern" ? "pattern" : "random";
+    const scheduleMode: ScheduleMode =
+      o.scheduleMode === "pattern" ? "pattern" : "random";
     const patternConstraint: PatternConstraint =
       o.patternConstraint === "fixed" ? "fixed" : "fitTotal";
     const shuffleNonce =
@@ -266,7 +366,9 @@ function parseStored(json: unknown): PersistShape | null {
       variabilityPct: typeof o.variabilityPct === "number" ? o.variabilityPct : 40,
       scheduleMs: Array.isArray(o.scheduleMs) ? (o.scheduleMs as number[]) : null,
       phase:
-        o.phase === "play" || o.phase === "complete" || o.phase === "setup" ? o.phase : "setup",
+        o.phase === "play" || o.phase === "complete" || o.phase === "setup"
+          ? o.phase
+          : "setup",
       resume: (o.resume as PersistShape["resume"]) ?? null,
     };
   }
@@ -313,8 +415,10 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   const prefersReducedMotion = usePrefersReducedMotion();
 
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("pattern");
-  const [patternConstraint, setPatternConstraint] = useState<PatternConstraint>("fitTotal");
-  const [patternSlots, setPatternSlots] = useState<PatternPhasePersist[]>(defaultPatternSlots);
+  const [patternConstraint, setPatternConstraint] =
+    useState<PatternConstraint>("fitTotal");
+  const [patternSlots, setPatternSlots] =
+    useState<PatternPhasePersist[]>(defaultPatternSlots);
   const [shuffleNonce, setShuffleNonce] = useState(0);
 
   const [minutes, setMinutes] = useState(45);
@@ -339,7 +443,9 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
 
   const onSegmentCompleteRef = useRef<() => void>(() => {});
 
-  const [remainingMs, running, ctr] = useAccurateTimer(() => onSegmentCompleteRef.current());
+  const [remainingMs, running, ctr] = useAccurateTimer(() =>
+    onSegmentCompleteRef.current()
+  );
 
   const remainingMsRef = useRef(remainingMs);
   remainingMsRef.current = remainingMs;
@@ -369,7 +475,9 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     }
 
     const k = patternSlots.length;
-    const weightsMs = patternSlots.map((s) => totalMsFromHms(s.hours, s.minutes, s.secondsPart));
+    const weightsMs = patternSlots.map((s) =>
+      totalMsFromHms(s.hours, s.minutes, s.secondsPart)
+    );
 
     if (patternConstraint === "fitTotal") {
       const res = buildPatternScheduleFitTotal(totalMsPlanned, n, weightsMs);
@@ -392,11 +500,19 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       intervalsMs: res.intervalsMs,
       phaseLabels: phaseLabelsForSchedule(n, k),
     };
-  }, [scheduleMode, patternConstraint, patternSlots, ringCount, totalMsPlanned, variabilityPct, shuffleNonce]);
+  }, [
+    scheduleMode,
+    patternConstraint,
+    patternSlots,
+    ringCount,
+    totalMsPlanned,
+    variabilityPct,
+    shuffleNonce,
+  ]);
 
   const persistTick = useCallback(() => {
     const intervals =
-      intervalsRef.current.length > 0 ? intervalsRef.current : scheduleMs ?? [];
+      intervalsRef.current.length > 0 ? intervalsRef.current : (scheduleMs ?? []);
     const playing = phase === "play";
 
     let resume: PersistShape["resume"] = null;
@@ -567,7 +683,9 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   const beginPlayback = useCallback(() => {
     primeAudioFromUserGesture();
     if (!schedulePreview.ok || !schedulePreview.intervalsMs.length) {
-      alert(schedulePreview.ok ? "Fix the schedule before starting." : schedulePreview.error);
+      alert(
+        schedulePreview.ok ? "Fix the schedule before starting." : schedulePreview.error
+      );
       return;
     }
     const intervals = schedulePreview.intervalsMs;
@@ -652,7 +770,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
 
   const sessionPlanTotalMs = useMemo(
     () => (sched.length === 0 ? 0 : sched.reduce((a, b) => a + b, 0)),
-    [sched],
+    [sched]
   );
 
   const sessionElapsedPlannedMs = useMemo(() => {
@@ -665,13 +783,10 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     return before + consumed;
   }, [phase, sched, currentIndex, remainingMs]);
 
-  const sessionPlanProgressPct =
-    sessionPlanTotalMs > 0
-      ? Math.min(100, Math.max(0, (sessionElapsedPlannedMs / sessionPlanTotalMs) * 100))
-      : 0;
-
   const setupIntervals =
-    phase === "setup" && schedulePreview.ok ? schedulePreview.intervalsMs : scheduleMs ?? [];
+    phase === "setup" && schedulePreview.ok
+      ? schedulePreview.intervalsMs
+      : (scheduleMs ?? []);
   const setupPhaseLabels =
     phase === "setup" && schedulePreview.ok ? schedulePreview.phaseLabels : undefined;
 
@@ -720,8 +835,10 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- hotkeys must match latest beginPlayback without re-registering every pause tick
   }, [actionsRef, phase, running, beginPlayback]);
 
-  const setupScheduleError = phase === "setup" && !schedulePreview.ok ? schedulePreview.error : null;
-  const showSessionDuration = scheduleMode === "random" || patternConstraint === "fitTotal";
+  const setupScheduleError =
+    phase === "setup" && !schedulePreview.ok ? schedulePreview.error : null;
+  const showSessionDuration =
+    scheduleMode === "random" || patternConstraint === "fitTotal";
 
   const scheduleSubStepCount = scheduleMode === "pattern" ? 3 : 1;
   const sessionChapterMark = scheduleSubStepCount + 1;
@@ -745,10 +862,12 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
           className="mx-auto w-full min-w-0 max-w-7xl px-4 py-10 sm:px-10"
         >
           <div className="lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:items-start lg:gap-x-8 lg:gap-y-0 xl:gap-x-12">
-            <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-8 sm:max-w-lg lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1">
+            <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-6 sm:max-w-lg lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1">
               <div className="flex flex-col gap-0">
                 <div className="flex flex-col gap-5">
-                  <SetupSubStepTitle notation="1.">Pattern or random spread</SetupSubStepTitle>
+                  <SetupSubStepTitle notation="1.">
+                    Pattern or random spread
+                  </SetupSubStepTitle>
                   <div className="mt-2 flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
                     <BigOption
                       label="PAT"
@@ -770,8 +889,10 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
 
                 {scheduleMode === "pattern" ? (
                   <>
-                    <div className="mt-14 flex flex-col gap-4 pt-14 sm:mt-16 sm:pt-16">
-                      <SetupSubStepTitle notation="2.">Scale to session or fixed lengths</SetupSubStepTitle>
+                    <div className="mt-8 flex flex-col gap-4 pt-6 sm:mt-10 sm:pt-8">
+                      <SetupSubStepTitle notation="2.">
+                        Scale to session or fixed lengths
+                      </SetupSubStepTitle>
                       <div className="mt-2 flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
                         <BigOption
                           label="FIT"
@@ -791,16 +912,21 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                       </div>
                     </div>
 
-                    <div className="mt-14 flex flex-col gap-5 pt-14 sm:mt-16 sm:gap-6 sm:pt-16">
+                    <div className="mt-8 flex flex-col gap-5 pt-6 sm:mt-10 sm:gap-6 sm:pt-8">
                       <SetupSubStepTitle notation="3.">Phase durations</SetupSubStepTitle>
-                      <PatternScheduleEditor slots={patternSlots} onSlotsChange={setPatternSlots} />
+                      <PatternScheduleEditor
+                        slots={patternSlots}
+                        onSlotsChange={setPatternSlots}
+                      />
                     </div>
                   </>
                 ) : null}
               </div>
 
-              <div className="flex w-full min-w-0 flex-col gap-4 pt-12 sm:pt-14">
-                <SetupSubStepTitle notation={`${sessionChapterMark}.`}>Session</SetupSubStepTitle>
+              <div className="flex w-full min-w-0 flex-col gap-4">
+                <SetupSubStepTitle notation={`${sessionChapterMark}.`}>
+                  Session
+                </SetupSubStepTitle>
                 <div className="flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
                   {showSessionDuration && (
                     <BigRow label="DUR" borderBottom>
@@ -857,8 +983,10 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 </p>
               )}
 
-              <div className="flex w-full min-w-0 flex-col gap-4 pt-12 sm:pt-14">
-                <SetupSubStepTitle notation={`${soundChapterMark}.`}>Sound</SetupSubStepTitle>
+              <div className="flex w-full min-w-0 flex-col gap-4">
+                <SetupSubStepTitle notation={`${soundChapterMark}.`}>
+                  Sound
+                </SetupSubStepTitle>
                 <IntervalSoundPanel
                   className="max-w-md lg:justify-start lg:pt-0"
                   chimeRepeats={chimeRepeats}
@@ -881,7 +1009,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 "h-[min(68dvh,calc(100dvh-12rem))] max-h-[calc(100dvh-12rem)]",
                 "lg:mt-0 lg:sticky lg:top-[max(0.75rem,calc(5.25rem+env(safe-area-inset-top)))] lg:z-10 lg:self-start",
                 "lg:h-[calc(100dvh-6.5rem)] lg:max-h-[calc(100dvh-6.5rem)]",
-                "lg:border-t-0 lg:pl-4 lg:pt-0",
+                "lg:border-t-0 lg:pl-0 lg:pt-0",
               ].join(" ")}
             >
               <IntervalSchedulePanel
@@ -890,12 +1018,16 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 variant="embedded"
                 fillHeight
                 headerEnd={
-                  <IntervalScheduleHeaderStart
+                  <IntervalScheduleTransportBar
+                    state="setup"
                     totalMs={
-                      schedulePreview.ok ? schedulePreview.intervalsMs.reduce((a, b) => a + b, 0) : 0
+                      schedulePreview.ok
+                        ? schedulePreview.intervalsMs.reduce((a, b) => a + b, 0)
+                        : 0
                     }
-                    disabled={!schedulePreview.ok}
-                    onClick={beginPlayback}
+                    elapsedMs={0}
+                    startDisabled={!schedulePreview.ok}
+                    onStart={beginPlayback}
                   />
                 }
               />
@@ -911,11 +1043,11 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
         >
           {/* Same grid as setup — primary column first (sound), schedule second → no holistic jump at start */}
           <div className="lg:grid lg:min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:items-start lg:gap-x-8 lg:gap-y-0 xl:gap-x-12">
-            <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-8 sm:max-w-lg lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1">
+            <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-6 sm:max-w-lg lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1">
               <div className="flex flex-col gap-5">
                 <SetupSubStepTitle notation="1.">While running</SetupSubStepTitle>
                 <IntervalSoundPanel
-                  className="lg:justify-start lg:pt-0"
+                  className="max-w-md lg:justify-start lg:pt-0"
                   chimeRepeats={chimeRepeats}
                   onChimeRepeatsChange={(v) => {
                     chimeRepeatsRef.current = v;
@@ -936,7 +1068,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 "h-[min(68dvh,calc(100dvh-12rem))] max-h-[calc(100dvh-12rem)]",
                 "lg:mt-0 lg:sticky lg:top-[max(0.75rem,calc(5.25rem+env(safe-area-inset-top)))] lg:z-10 lg:self-start",
                 "lg:h-[calc(100dvh-6.5rem)] lg:max-h-[calc(100dvh-6.5rem)]",
-                "lg:border-t-0 lg:pl-4 lg:pt-0",
+                "lg:border-t-0 lg:pl-0 lg:pt-0",
               ].join(" ")}
             >
               <IntervalSchedulePanel
@@ -949,63 +1081,25 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 variant="embedded"
                 fillHeight
                 headerEnd={
-                  <div className={scheduleHeaderBarShellClass}>
-                    <div className="flex min-w-0 shrink items-center gap-2 sm:gap-2.5">
-                      {running ? (
-                        <button
-                          type="button"
-                          className={scheduleBarPrimaryActionClass}
-                          aria-label="Pause"
-                          onClick={() => {
-                            primeAudioFromUserGesture();
-                            pausePlayback();
-                            persistTick();
-                          }}
-                        >
-                          <PauseFillIcon className="h-3.5 w-3.5 shrink-0 text-ds-soft sm:h-4 sm:w-4" />
-                          <span>Pause</span>
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          className={scheduleBarPrimaryActionClass}
-                          aria-label="Resume"
-                          onClick={() => {
-                            primeAudioFromUserGesture();
-                            resumePlayback();
-                            persistTick();
-                          }}
-                        >
-                          <PlayStrokeIcon className="h-[15px] w-[15px] shrink-0 text-ds-soft sm:h-4 sm:w-4" />
-                          <span>Resume</span>
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        className={scheduleBarSecondaryActionClass}
-                        aria-label="Stop session"
-                        onClick={() => {
-                          primeAudioFromUserGesture();
-                          stopSession();
-                        }}
-                      >
-                        <StopStrokeIcon className="h-[15px] w-[15px] shrink-0 text-ds-soft sm:h-4 sm:w-4" />
-                        <span>Stop</span>
-                      </button>
-                    </div>
-                    <p
-                      className={scheduleHeaderTimeClass}
-                      role="progressbar"
-                      aria-valuemin={0}
-                      aria-valuemax={100}
-                      aria-valuenow={Math.round(sessionPlanProgressPct)}
-                      aria-valuetext={`${formatMmSs(sessionElapsedPlannedMs)} elapsed of ${formatMmSs(sessionPlanTotalMs)}`}
-                    >
-                      {formatMmSs(sessionElapsedPlannedMs)}
-                      <span className="text-ds-dim"> / </span>
-                      {formatMmSs(sessionPlanTotalMs)}
-                    </p>
-                  </div>
+                  <IntervalScheduleTransportBar
+                    state={running ? "running" : "paused"}
+                    totalMs={sessionPlanTotalMs}
+                    elapsedMs={sessionElapsedPlannedMs}
+                    onPause={() => {
+                      primeAudioFromUserGesture();
+                      pausePlayback();
+                      persistTick();
+                    }}
+                    onResume={() => {
+                      primeAudioFromUserGesture();
+                      resumePlayback();
+                      persistTick();
+                    }}
+                    onStop={() => {
+                      primeAudioFromUserGesture();
+                      stopSession();
+                    }}
+                  />
                 }
               />
             </div>
@@ -1042,7 +1136,9 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
           aria-live="polite"
           className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-4 py-10 text-center transition-opacity duration-ds ease-ds-out sm:px-10"
         >
-          <p className="font-serif text-[1.65rem] font-light tracking-tight text-ds-fg">All rings complete.</p>
+          <p className="font-serif text-[1.65rem] font-light tracking-tight text-ds-fg">
+            All rings complete.
+          </p>
           <ul className="mx-auto max-h-40 max-w-lg space-y-1 overflow-y-auto px-2 text-center text-sm leading-relaxed text-ds-body">
             {actualSegments.map((ms, i) => (
               <li key={`${i}-${ms}`}>
@@ -1055,7 +1151,11 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
             ))}
           </ul>
           <ControlsRow>
-            <ControlButton variant="secondary" onClick={() => setPhase("setup")} aria-label="Back to setup">
+            <ControlButton
+              variant="secondary"
+              onClick={() => setPhase("setup")}
+              aria-label="Back to setup"
+            >
               Setup
             </ControlButton>
           </ControlsRow>

@@ -1,5 +1,6 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { BigRow } from "./BigRow";
 import { BigNumber } from "./BigEditors";
 
@@ -21,8 +22,12 @@ export function IntervalSoundPanel({
   onChimeVolumeChange,
   className = "",
 }: Props) {
+  const sliderStyle = { "--slider-pct": `${chimeVolumePct}%` } as CSSProperties;
+
   return (
-    <div className={`flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider ${className}`}>
+    <div
+      className={`flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider ${className}`}
+    >
       <BigRow label="BEEP" borderBottom>
         <BigNumber
           label="Beeps"
@@ -37,7 +42,10 @@ export function IntervalSoundPanel({
             <label htmlFor="chime-volume-slider" className="shrink-0">
               Volume
             </label>
-            <span className="ml-1 shrink-0 font-mono tabular-nums" aria-live="polite">
+            <span
+              className="ml-1 shrink-0 font-mono text-[12px] tabular-nums text-ds-fg"
+              aria-live="polite"
+            >
               {chimeVolumePct}%
             </span>
           </div>
@@ -50,8 +58,11 @@ export function IntervalSoundPanel({
             value={chimeVolumePct}
             aria-valuetext={`${chimeVolumePct} percent`}
             className="variability-slider w-full"
+            style={sliderStyle}
             onChange={(e) => onChimeVolumeChange(Number(e.target.value))}
-            onInput={(e) => onChimeVolumeChange(Number((e.target as HTMLInputElement).value))}
+            onInput={(e) =>
+              onChimeVolumeChange(Number((e.target as HTMLInputElement).value))
+            }
           />
         </div>
       </BigRow>

@@ -6,11 +6,9 @@ import {
   splitTotalSecToHms,
   totalSecFromHms,
 } from "@/lib/normalizeDurationParts";
-import {
-  HmsClock,
-} from "./BigEditors";
+import { HmsClock } from "./BigEditors";
 
-import { controlButtonClasses, denseIconButtonClass } from "./Controls";
+import { controlButtonClasses } from "./Controls";
 import { BigRow } from "./BigRow";
 
 export type PatternConstraint = "fitTotal" | "fixed";
@@ -29,7 +27,17 @@ type Props = {
 const LETTERS = ["A", "B", "C", "D", "E", "F"] as const;
 
 const TrashIcon = ({ className }: { className?: string }) => (
-  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    className={className}
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M3 6h18" />
     <path d="M19 6v14c0 1-1 2-2H8c-1 0-2-1-2-2V6" />
     <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
@@ -37,23 +45,57 @@ const TrashIcon = ({ className }: { className?: string }) => (
 );
 
 const ArrowUpIcon = ({ className }: { className?: string }) => (
-  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m18 15-6-6-6 6"/>
+  <svg
+    className={className}
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="m18 15-6-6-6 6" />
   </svg>
 );
 
 const ArrowDownIcon = ({ className }: { className?: string }) => (
-  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="m6 9 6 6 6-6"/>
+  <svg
+    className={className}
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="m6 9 6 6 6-6" />
   </svg>
 );
 
 const PlusIcon = ({ className }: { className?: string }) => (
-  <svg className={className} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    className={className}
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M5 12h14" />
     <path d="M12 5v14" />
   </svg>
 );
+
+/** Borderless icon action buttons for phase row controls (reorder + delete). */
+const phaseIconActionClass =
+  "inline-flex items-center justify-center rounded-md border-0 bg-transparent text-ds-muted transition-[color,background-color,opacity] duration-ds ease-ds-out hover:bg-ds-section/24 hover:text-ds-fg focus-visible:outline-none disabled:pointer-events-none active:opacity-95";
 
 export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
   const applyPhaseTotalSec = (idx: number, totalSecRaw: number) => {
@@ -105,7 +147,7 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
                     <div className="flex flex-col items-center justify-center gap-0.5">
                       <button
                         type="button"
-                        className={`${denseIconButtonClass} h-7 w-7 text-ds-muted hover:text-ds-fg disabled:opacity-20`}
+                        className={`${phaseIconActionClass} h-7 w-7 disabled:opacity-20`}
                         aria-label={`Move phase ${letter} up`}
                         disabled={idx === 0}
                         onClick={() => movePhase(idx, -1)}
@@ -114,7 +156,7 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
                       </button>
                       <button
                         type="button"
-                        className={`${denseIconButtonClass} h-7 w-7 text-ds-muted hover:text-ds-fg disabled:opacity-20`}
+                        className={`${phaseIconActionClass} h-7 w-7 disabled:opacity-20`}
                         aria-label={`Move phase ${letter} down`}
                         disabled={idx === slots.length - 1}
                         onClick={() => movePhase(idx, 1)}
@@ -126,7 +168,7 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
                   {slots.length > 1 ? (
                     <button
                       type="button"
-                      className={`${denseIconButtonClass} h-10 w-10 text-ds-muted transition-[color,background-color,border-color] duration-ds ease-ds-out hover:border-red-500/35 hover:bg-red-500/10 hover:text-red-500 sm:h-11 sm:w-11`}
+                      className={`${phaseIconActionClass} h-10 w-10 hover:bg-red-500/10 hover:text-red-500 sm:h-11 sm:w-11`}
                       aria-label={`Remove phase ${letter}`}
                       onClick={() => removePhase(idx)}
                     >
