@@ -297,30 +297,35 @@ section[id] {
 @layer components {
   /*
    * Shared range control style for variability + volume.
-   * Thin, minimal rail + compact thumb that match input chrome used across the UI.
-   * Left-side brightness growth still comes from `--slider-pct` and brightens on hover.
+   * Thin white fill + circular white thumb over a muted gray rail.
    */
   .variability-slider {
-    --slider-track-height: 5px;
-    --slider-thumb-size: 14px;
+    --slider-track-height: 3px;
+    --slider-thumb-size: 11px;
     --slider-pct: 0%;
-    --slider-fill: color-mix(in srgb, var(--color-fg-soft) 54%, transparent);
-    --slider-fill-hover: color-mix(in srgb, var(--color-fg-soft) 72%, transparent);
-    --slider-rail: color-mix(in srgb, var(--color-border) 90%, transparent);
+    --slider-fill: var(--color-fg);
+    --slider-fill-hover: var(--color-fg);
+    --slider-rail: color-mix(in srgb, var(--color-fg-muted) 42%, transparent);
+    --slider-rail-hover: color-mix(in srgb, var(--color-fg-muted) 56%, transparent);
+    --slider-thumb-border: color-mix(
+      in srgb,
+      var(--color-fg) 72%,
+      var(--color-border-hover)
+    );
     -webkit-appearance: none;
     -moz-appearance: none;
     appearance: none;
     display: block;
     width: 100%;
-    height: 2rem;
+    height: 1.5rem;
     cursor: pointer;
     background-color: transparent;
-    accent-color: var(--color-fg-soft);
+    accent-color: var(--color-fg);
   }
 
   .variability-slider:disabled {
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: 0.45;
   }
 
   .variability-slider:focus {
@@ -330,24 +335,21 @@ section[id] {
   .variability-slider::-webkit-slider-runnable-track {
     height: var(--slider-track-height);
     border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--color-border-hover) 36%, transparent);
+    border: 0;
     background: linear-gradient(
       to right,
       var(--slider-fill) 0 var(--slider-pct),
       var(--slider-rail) var(--slider-pct) 100%
     );
-    transition:
-      border-color 120ms linear,
-      background-color 120ms linear;
+    transition: background-color 120ms linear;
   }
 
   .variability-slider:hover::-webkit-slider-runnable-track {
     background: linear-gradient(
       to right,
       var(--slider-fill-hover) 0 var(--slider-pct),
-      var(--slider-rail) var(--slider-pct) 100%
+      var(--slider-rail-hover) var(--slider-pct) 100%
     );
-    border-color: color-mix(in srgb, var(--color-border-hover) 52%, transparent);
   }
 
   .variability-slider::-webkit-slider-thumb {
@@ -356,39 +358,47 @@ section[id] {
     margin-top: calc((var(--slider-track-height) - var(--slider-thumb-size)) / 2);
     width: var(--slider-thumb-size);
     height: var(--slider-thumb-size);
-    border-radius: 0.24rem;
-    border: 1px solid color-mix(in srgb, var(--color-border-hover) 58%, transparent);
-    background: color-mix(in srgb, var(--color-fg) 58%, var(--color-bg-page));
-    box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 9%, transparent);
+    border-radius: 999px;
+    border: 1px solid var(--slider-thumb-border);
+    background: var(--color-fg);
+    box-shadow: 0 1px 4px color-mix(in srgb, #000000 36%, transparent);
     transition:
-      background-color 120ms linear,
+      transform 120ms ease,
+      box-shadow 120ms linear,
       border-color 120ms linear;
     box-sizing: border-box;
   }
 
   .variability-slider:hover::-webkit-slider-thumb {
-    border-color: color-mix(in srgb, var(--color-fg-soft) 62%, transparent);
-    background: color-mix(in srgb, var(--color-fg) 72%, var(--color-bg-page));
+    box-shadow: 0 1px 6px color-mix(in srgb, #000000 46%, transparent);
+  }
+
+  .variability-slider:active::-webkit-slider-thumb {
+    transform: scale(0.96);
   }
 
   .variability-slider:focus-visible::-webkit-slider-thumb {
     box-shadow:
       0 0 0 2px var(--color-bg-page),
-      0 0 0 4px var(--color-fg-muted);
+      0 0 0 4px color-mix(in srgb, var(--color-fg) 56%, var(--color-fg-muted));
   }
 
   .variability-slider::-moz-range-track {
     height: var(--slider-track-height);
     border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--color-border-hover) 36%, transparent);
+    border: 0;
     background: var(--slider-rail);
+    transition: background-color 120ms linear;
+  }
+
+  .variability-slider:hover::-moz-range-track {
+    background: var(--slider-rail-hover);
   }
 
   .variability-slider::-moz-range-progress {
     height: var(--slider-track-height);
     border-radius: 999px;
     background: var(--slider-fill);
-    transition: background-color 120ms linear;
   }
 
   .variability-slider:hover::-moz-range-progress {
@@ -399,25 +409,29 @@ section[id] {
     appearance: none;
     width: var(--slider-thumb-size);
     height: var(--slider-thumb-size);
-    border-radius: 0.24rem;
-    border: 1px solid color-mix(in srgb, var(--color-border-hover) 58%, transparent);
-    background: color-mix(in srgb, var(--color-fg) 58%, var(--color-bg-page));
-    box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 9%, transparent);
+    border-radius: 999px;
+    border: 1px solid var(--slider-thumb-border);
+    background: var(--color-fg);
+    box-shadow: 0 1px 4px color-mix(in srgb, #000000 36%, transparent);
     cursor: pointer;
     box-sizing: border-box;
     transition:
-      background-color 120ms linear,
+      transform 120ms ease,
+      box-shadow 120ms linear,
       border-color 120ms linear;
   }
 
   .variability-slider:hover::-moz-range-thumb {
-    border-color: color-mix(in srgb, var(--color-fg-soft) 62%, transparent);
-    background: color-mix(in srgb, var(--color-fg) 72%, var(--color-bg-page));
+    box-shadow: 0 1px 6px color-mix(in srgb, #000000 46%, transparent);
+  }
+
+  .variability-slider:active::-moz-range-thumb {
+    transform: scale(0.96);
   }
 
   .variability-slider:focus-visible::-moz-range-thumb {
     box-shadow:
       0 0 0 2px var(--color-bg-page),
-      0 0 0 4px var(--color-fg-muted);
+      0 0 0 4px color-mix(in srgb, var(--color-fg) 56%, var(--color-fg-muted));
   }
 }

@@ -840,9 +840,9 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   const showSessionDuration =
     scheduleMode === "random" || patternConstraint === "fitTotal";
 
-  const scheduleSubStepCount = scheduleMode === "pattern" ? 3 : 1;
-  const sessionChapterMark = scheduleSubStepCount + 1;
-  const soundChapterMark = scheduleSubStepCount + 2;
+  const sessionChapterMark = 2;
+  const spreadChapterMark = 3;
+  const soundChapterMark = 4;
 
   return (
     <div className="mx-auto mt-8 w-full min-w-0 space-y-8 text-left transition-opacity duration-ds ease-ds-out">
@@ -890,7 +890,7 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 {scheduleMode === "pattern" ? (
                   <>
                     <div className="mt-8 flex flex-col gap-4 pt-6 sm:mt-10 sm:pt-8">
-                      <SetupSubStepTitle notation="2.">
+                      <SetupSubStepTitle notation="1A.">
                         Scale to session or fixed lengths
                       </SetupSubStepTitle>
                       <div className="mt-2 flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
@@ -913,7 +913,9 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                     </div>
 
                     <div className="mt-8 flex flex-col gap-5 pt-6 sm:mt-10 sm:gap-6 sm:pt-8">
-                      <SetupSubStepTitle notation="3.">Phase durations</SetupSubStepTitle>
+                      <SetupSubStepTitle notation="1B.">
+                        Phase durations
+                      </SetupSubStepTitle>
                       <PatternScheduleEditor
                         slots={patternSlots}
                         onSlotsChange={setPatternSlots}
@@ -948,30 +950,37 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                     />
                   </BigRow>
                 </div>
+              </div>
 
-                {scheduleMode === "random" && (
-                  <div className="mt-6 flex flex-col gap-3 border-t border-ds-divider pt-8">
-                    <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-ds-soft sm:text-[11px] sm:tracking-[0.13em]">
-                      Spread
+              <div className="flex w-full min-w-0 flex-col gap-4">
+                <SetupSubStepTitle notation={`${spreadChapterMark}.`}>
+                  Spread
+                </SetupSubStepTitle>
+                <div className="mt-1 flex max-w-md flex-col gap-3 border-t border-ds-divider pt-6 lg:mx-0">
+                  <VariabilitySlider
+                    className="w-full"
+                    value={variabilityPct}
+                    onChange={setVariabilityPct}
+                    disabled={scheduleMode !== "random"}
+                  />
+                  <ControlButton
+                    type="button"
+                    variant="secondary"
+                    className="!min-h-12 w-full max-w-xs py-3.5 lg:mx-0"
+                    disabled={scheduleMode !== "random"}
+                    onClick={() => {
+                      primeAudioFromUserGesture();
+                      setShuffleNonce((n) => n + 1);
+                    }}
+                  >
+                    New shuffle
+                  </ControlButton>
+                  {scheduleMode !== "random" && (
+                    <p className="text-xs leading-snug text-ds-soft">
+                      Spread controls are enabled in Random mode.
                     </p>
-                    <VariabilitySlider
-                      className="w-full max-w-md lg:mx-0"
-                      value={variabilityPct}
-                      onChange={setVariabilityPct}
-                    />
-                    <ControlButton
-                      type="button"
-                      variant="secondary"
-                      className="!min-h-12 w-full max-w-xs py-3.5 lg:mx-0"
-                      onClick={() => {
-                        primeAudioFromUserGesture();
-                        setShuffleNonce((n) => n + 1);
-                      }}
-                    >
-                      New shuffle
-                    </ControlButton>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {setupScheduleError && (
