@@ -11,12 +11,15 @@ import {
 import { ShortcutHandles } from "@/types/hotkeys";
 import {
   MAX_PATTERN_PHASES,
-  buildPatternScheduleFitTotal,
-  buildPatternScheduleFixed,
+  buildPhaseIndexSequenceFromOccurrences,
+  buildPatternScheduleFromPhaseIndices,
   buildRandomSchedule,
+  fitIntervalsToTargetTotal,
   mixSeed,
   mulberry32,
-  phaseLabelsForSchedule,
+  multiplyIntervalsToTarget,
+  normalizeOccurrenceCount,
+  phaseLabelsFromIndices,
 } from "@/lib/buildIntervalSchedule";
 import { formatMmSs, formatRingRemainingLine } from "@/lib/formatTime";
 import {
@@ -43,7 +46,9 @@ import { IntervalSoundPanel } from "./IntervalSoundPanel";
 import {
   PatternScheduleEditor,
   type PatternConstraint,
+  type PatternOccurrenceMode,
   type PatternPhasePersist,
+  type PatternScaleStrategy,
 } from "./PatternScheduleEditor";
 import { SetupSubStepTitle } from "./SetupSectionTitle";
 import { VariabilitySlider } from "./VariabilitySlider";
@@ -269,6 +274,8 @@ type PersistShape = {
   version: 2;
   scheduleMode: ScheduleMode;
   patternConstraint: PatternConstraint;
+  patternOccurrenceMode: PatternOccurrenceMode;
+  patternScaleStrategy: PatternScaleStrategy;
   patternSlots: PatternPhasePersist[];
   shuffleNonce: number;
   minutes: number;
@@ -289,8 +296,8 @@ type PersistShape = {
 
 function defaultPatternSlots(): PatternPhasePersist[] {
   return [
-    { hours: 0, minutes: 5, secondsPart: 0 },
-    { hours: 0, minutes: 2, secondsPart: 0 },
+    { hours: 0, minutes: 5, secondsPart: 0, occurrences: 1 },
+    { hours: 0, minutes: 2, secondsPart: 0, occurrences: 1 },
   ];
 }
 
@@ -298,22 +305,44 @@ function normalizePatternSlots(raw: unknown): PatternPhasePersist[] {
   if (!Array.isArray(raw) || raw.length === 0) return defaultPatternSlots();
   const out: PatternPhasePersist[] = [];
   for (let i = 0; i < Math.min(MAX_PATTERN_PHASES, raw.length); i++) {
-    const item = raw[i] as { hours?: number; minutes?: number; secondsPart?: number };
+    const item = raw[i] as {
+      hours?: number;
+      minutes?: number;
+      secondsPart?: number;
+      occurrences?: number;
+    };
+    const occurrences = normalizeOccurrenceCount(item?.occurrences ?? 1);
     if (typeof item.hours === "number") {
-      out.push(normalizeHmsParts(item.hours, item.minutes ?? 0, item.secondsPart ?? 0));
+      out.push({
+        ...normalizeHmsParts(item.hours, item.minutes ?? 0, item.secondsPart ?? 0),
+        occurrences,
+      });
     } else {
       const norm = normalizeDurationParts(item?.minutes ?? 0, item?.secondsPart ?? 0);
-      out.push(normalizeHmsParts(0, norm.minutes, norm.secondsPart));
+      out.push({ ...normalizeHmsParts(0, norm.minutes, norm.secondsPart), occurrences });
     }
   }
   return out.length > 0 ? out : defaultPatternSlots();
+}
+
+function normalizeOccurrenceMode(raw: unknown): PatternOccurrenceMode {
+  return raw === "perItem" ? "perItem" : "total";
+}
+
+function normalizeScaleStrategy(raw: unknown): PatternScaleStrategy {
+  if (raw === "none" || raw === "fitClosest" || raw === "multiply") {
+    return raw;
+  }
+  return "none";
 }
 
 function migrateV1(s: PersistShapeV1): PersistShape {
   return {
     version: 2,
     scheduleMode: "random",
-    patternConstraint: "fitTotal",
+    patternConstraint: "cycle",
+    patternOccurrenceMode: "total",
+    patternScaleStrategy: "none",
     patternSlots: defaultPatternSlots(),
     shuffleNonce: 0,
     minutes: s.minutes,
@@ -340,16 +369,33 @@ function parseStored(json: unknown): PersistShape | null {
   if (o.version === 2) {
     const scheduleMode: ScheduleMode =
       o.scheduleMode === "pattern" ? "pattern" : "random";
+
+    const rawConstraint = o.patternConstraint;
     const patternConstraint: PatternConstraint =
-      o.patternConstraint === "fixed" ? "fixed" : "fitTotal";
+      rawConstraint === "fixed" || rawConstraint === "fixedLength"
+        ? "fixedLength"
+        : rawConstraint === "fitTotal"
+          ? "fixedLength"
+          : "cycle";
+
+    const patternOccurrenceMode = normalizeOccurrenceMode(o.patternOccurrenceMode);
+
+    const patternScaleStrategy =
+      rawConstraint === "fitTotal"
+        ? "fitClosest"
+        : normalizeScaleStrategy(o.patternScaleStrategy);
+
     const shuffleNonce =
       typeof o.shuffleNonce === "number" && Number.isFinite(o.shuffleNonce)
         ? Math.max(0, Math.floor(o.shuffleNonce))
         : 0;
+
     return {
       version: 2,
       scheduleMode,
       patternConstraint,
+      patternOccurrenceMode,
+      patternScaleStrategy,
       patternSlots: normalizePatternSlots(o.patternSlots),
       shuffleNonce,
       minutes: typeof o.minutes === "number" ? o.minutes : 45,
@@ -402,7 +448,14 @@ function saveStored(p: PersistShape) {
 }
 
 type SchedulePreview =
-  | { ok: true; intervalsMs: number[]; phaseLabels: string[] }
+  | {
+      ok: true;
+      intervalsMs: number[];
+      phaseLabels: string[];
+      remainderMs: number;
+      strategyUsed: "none" | "fitClosest" | "multiply";
+      slotDeltaMs: number[];
+    }
   | { ok: false; error: string };
 
 type Props = {
@@ -415,8 +468,11 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   const prefersReducedMotion = usePrefersReducedMotion();
 
   const [scheduleMode, setScheduleMode] = useState<ScheduleMode>("pattern");
-  const [patternConstraint, setPatternConstraint] =
-    useState<PatternConstraint>("fitTotal");
+  const [patternConstraint, setPatternConstraint] = useState<PatternConstraint>("cycle");
+  const [patternOccurrenceMode, setPatternOccurrenceMode] =
+    useState<PatternOccurrenceMode>("total");
+  const [patternScaleStrategy, setPatternScaleStrategy] =
+    useState<PatternScaleStrategy>("none");
   const [patternSlots, setPatternSlots] =
     useState<PatternPhasePersist[]>(defaultPatternSlots);
   const [shuffleNonce, setShuffleNonce] = useState(0);
@@ -461,8 +517,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   const ringCount = Math.max(1, Math.min(500, Math.floor(rings)));
 
   const schedulePreview = useMemo((): SchedulePreview => {
-    const n = ringCount;
     if (scheduleMode === "random") {
+      const n = ringCount;
       const v = variabilityPct / 100;
       const seed = mixSeed([totalMsPlanned, n, variabilityPct, shuffleNonce]);
       const rng = mulberry32(seed);
@@ -471,38 +527,134 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
         return { ok: false, error: res.error };
       }
       const blanks = Array.from({ length: n }, () => "");
-      return { ok: true, intervalsMs: res.intervalsMs, phaseLabels: blanks };
-    }
-
-    const k = patternSlots.length;
-    const weightsMs = patternSlots.map((s) =>
-      totalMsFromHms(s.hours, s.minutes, s.secondsPart)
-    );
-
-    if (patternConstraint === "fitTotal") {
-      const res = buildPatternScheduleFitTotal(totalMsPlanned, n, weightsMs);
-      if (!res.ok) {
-        return { ok: false, error: res.error };
-      }
       return {
         ok: true,
         intervalsMs: res.intervalsMs,
-        phaseLabels: phaseLabelsForSchedule(n, k),
+        phaseLabels: blanks,
+        remainderMs: 0,
+        strategyUsed: "none",
+        slotDeltaMs: [],
       };
     }
 
-    const res = buildPatternScheduleFixed(n, weightsMs);
-    if (!res.ok) {
-      return { ok: false, error: res.error };
+    const lengthsMs = patternSlots.map((s) =>
+      totalMsFromHms(s.hours, s.minutes, s.secondsPart)
+    );
+    const occurrences = patternSlots.map((s) => normalizeOccurrenceCount(s.occurrences));
+
+    const buildCyclePhaseIndices = () =>
+      buildPhaseIndexSequenceFromOccurrences(occurrences);
+
+    const buildFixedLengthBasePhaseIndices = () => {
+      if (patternOccurrenceMode === "perItem") {
+        return buildPhaseIndexSequenceFromOccurrences(occurrences);
+      }
+      const kk = Math.max(1, patternSlots.length);
+      return {
+        ok: true as const,
+        phaseIndices: Array.from({ length: kk }, (_, i) => i),
+      };
+    };
+
+    const strategyUsed = patternScaleStrategy;
+
+    if (patternConstraint === "cycle") {
+      const seq = buildCyclePhaseIndices();
+      if (!seq.ok) {
+        return { ok: false, error: seq.error };
+      }
+      const base = buildPatternScheduleFromPhaseIndices(seq.phaseIndices, lengthsMs);
+      if (!base.ok) {
+        return { ok: false, error: base.error };
+      }
+      return {
+        ok: true,
+        intervalsMs: base.intervalsMs,
+        phaseLabels: phaseLabelsFromIndices(seq.phaseIndices),
+        remainderMs: 0,
+        strategyUsed: "none",
+        slotDeltaMs: patternSlots.map(() => 0),
+      };
     }
+
+    const baseSeq = buildFixedLengthBasePhaseIndices();
+    if (!baseSeq.ok) {
+      return { ok: false, error: baseSeq.error };
+    }
+
+    const base = buildPatternScheduleFromPhaseIndices(baseSeq.phaseIndices, lengthsMs);
+    if (!base.ok) {
+      return { ok: false, error: base.error };
+    }
+
+    const baseLabels = phaseLabelsFromIndices(baseSeq.phaseIndices);
+
+    if (strategyUsed === "fitClosest" || strategyUsed === "multiply") {
+      const multiplied = multiplyIntervalsToTarget(totalMsPlanned, base.intervalsMs);
+      if (!multiplied.ok) {
+        return { ok: false, error: multiplied.error };
+      }
+
+      const repeatedPhaseIndices: number[] = [];
+      for (let i = 0; i < multiplied.repeats; i++) {
+        repeatedPhaseIndices.push(...baseSeq.phaseIndices);
+      }
+      const repeatedLabels = phaseLabelsFromIndices(repeatedPhaseIndices);
+
+      if (strategyUsed === "multiply") {
+        return {
+          ok: true,
+          intervalsMs: multiplied.intervalsMs,
+          phaseLabels: repeatedLabels,
+          remainderMs: multiplied.remainderMs,
+          strategyUsed: "multiply",
+          slotDeltaMs: patternSlots.map(() => 0),
+        };
+      }
+
+      const fit = fitIntervalsToTargetTotal(totalMsPlanned, multiplied.intervalsMs);
+      if (!fit.ok) {
+        return { ok: false, error: fit.error };
+      }
+      const fitTotal = fit.intervalsMs.reduce((a, b) => a + b, 0);
+      const deltaSumBySlot = patternSlots.map(() => 0);
+      const hitCountBySlot = patternSlots.map(() => 0);
+      for (let i = 0; i < repeatedPhaseIndices.length; i++) {
+        const phaseIdx = repeatedPhaseIndices[i]!;
+        deltaSumBySlot[phaseIdx] =
+          (deltaSumBySlot[phaseIdx] ?? 0) +
+          ((fit.intervalsMs[i] ?? multiplied.intervalsMs[i] ?? 0) -
+            (multiplied.intervalsMs[i] ?? 0));
+        hitCountBySlot[phaseIdx] = (hitCountBySlot[phaseIdx] ?? 0) + 1;
+      }
+      const slotDeltaMs = deltaSumBySlot.map((sum, idx) => {
+        const c = hitCountBySlot[idx] ?? 0;
+        return c > 0 ? Math.round(sum / c) : 0;
+      });
+
+      return {
+        ok: true,
+        intervalsMs: fit.intervalsMs,
+        phaseLabels: repeatedLabels,
+        remainderMs: totalMsPlanned - fitTotal,
+        strategyUsed: "fitClosest",
+        slotDeltaMs,
+      };
+    }
+
     return {
       ok: true,
-      intervalsMs: res.intervalsMs,
-      phaseLabels: phaseLabelsForSchedule(n, k),
+      intervalsMs: base.intervalsMs,
+      phaseLabels: baseLabels,
+      remainderMs: 0,
+      strategyUsed: "none",
+      slotDeltaMs: patternSlots.map(() => 0),
     };
   }, [
     scheduleMode,
     patternConstraint,
+    patternOccurrenceMode,
+    patternScaleStrategy,
     patternSlots,
     ringCount,
     totalMsPlanned,
@@ -536,6 +688,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       version: 2,
       scheduleMode,
       patternConstraint,
+      patternOccurrenceMode,
+      patternScaleStrategy,
       patternSlots,
       shuffleNonce,
       minutes,
@@ -551,6 +705,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
   }, [
     scheduleMode,
     patternConstraint,
+    patternOccurrenceMode,
+    patternScaleStrategy,
     patternSlots,
     shuffleNonce,
     minutes,
@@ -577,6 +733,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       setRings(s.rings);
       setScheduleMode(s.scheduleMode);
       setPatternConstraint(s.patternConstraint);
+      setPatternOccurrenceMode(s.patternOccurrenceMode);
+      setPatternScaleStrategy(s.patternScaleStrategy);
       setPatternSlots(normalizePatternSlots(s.patternSlots));
       setShuffleNonce(s.shuffleNonce);
       setChimeRepeats(s.chimeRepeats);
@@ -645,6 +803,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
     hydrated,
     scheduleMode,
     patternConstraint,
+    patternOccurrenceMode,
+    patternScaleStrategy,
     patternSlots,
     shuffleNonce,
     minutes,
@@ -763,9 +923,19 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
       return acc;
     }, 0) || 0;
 
+  const phaseLabelsForCurrentSchedule =
+    scheduleMode === "pattern" && schedulePreview.ok
+      ? schedulePreview.phaseLabels
+      : undefined;
+
   const playbackPhaseLabels =
     scheduleMode === "pattern" && sched.length > 0
-      ? phaseLabelsForSchedule(sched.length, patternSlots.length)
+      ? phaseLabelsForCurrentSchedule?.slice(0, sched.length)
+      : undefined;
+
+  const completionPhaseLabels =
+    scheduleMode === "pattern" && sched.length > 0
+      ? phaseLabelsForCurrentSchedule?.slice(0, actualSegments.length)
       : undefined;
 
   const sessionPlanTotalMs = useMemo(
@@ -837,12 +1007,33 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
 
   const setupScheduleError =
     phase === "setup" && !schedulePreview.ok ? schedulePreview.error : null;
-  const showSessionDuration =
-    scheduleMode === "random" || patternConstraint === "fitTotal";
 
-  const sessionChapterMark = 2;
-  const spreadChapterMark = 3;
-  const soundChapterMark = 4;
+  const showSessionDuration =
+    scheduleMode === "random" ||
+    (scheduleMode === "pattern" &&
+      patternConstraint === "fixedLength" &&
+      patternScaleStrategy !== "none");
+
+  const showSessionRings = scheduleMode === "random";
+
+  const setupRemainderNotice =
+    phase === "setup" &&
+    scheduleMode === "pattern" &&
+    schedulePreview.ok &&
+    schedulePreview.strategyUsed === "multiply" &&
+    schedulePreview.remainderMs !== 0
+      ? schedulePreview.remainderMs > 0
+        ? `Left: ${formatMmSs(schedulePreview.remainderMs)}`
+        : `Over: ${formatMmSs(Math.abs(schedulePreview.remainderMs))}`
+      : null;
+
+  const showSessionSection = showSessionDuration || showSessionRings;
+  const showVariationSection = scheduleMode === "random";
+
+  let chapter = 2;
+  const sessionChapterMark = showSessionSection ? chapter++ : null;
+  const spreadChapterMark = showVariationSection ? chapter++ : null;
+  const soundChapterMark = chapter;
 
   return (
     <div className="mx-auto mt-8 w-full min-w-0 space-y-8 text-left transition-opacity duration-ds ease-ds-out">
@@ -865,22 +1056,20 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
             <div className="mx-auto flex w-full min-w-0 max-w-md flex-col gap-6 sm:max-w-lg lg:mx-0 lg:min-w-0 lg:max-w-none lg:flex-1">
               <div className="flex flex-col gap-0">
                 <div className="flex flex-col gap-5">
-                  <SetupSubStepTitle notation="1.">
-                    Pattern or random spread
-                  </SetupSubStepTitle>
+                  <SetupSubStepTitle notation="1.">Timing style</SetupSubStepTitle>
                   <div className="mt-2 flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
                     <BigOption
-                      label="PAT"
-                      title="Pattern"
-                      description="Repeating A→B→… cycle"
+                      label="SEQ"
+                      title="Sequenced"
+                      description="Follow your item order"
                       isActive={scheduleMode === "pattern"}
                       onClick={() => setScheduleMode("pattern")}
                       borderBottom
                     />
                     <BigOption
                       label="RND"
-                      title="Random"
-                      description="Jittered time per ring"
+                      title="Randomized"
+                      description="Vary each ring time"
                       isActive={scheduleMode === "random"}
                       onClick={() => setScheduleMode("random")}
                     />
@@ -890,98 +1079,176 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
                 {scheduleMode === "pattern" ? (
                   <>
                     <div className="mt-8 flex flex-col gap-4 pt-6 sm:mt-10 sm:pt-8">
-                      <SetupSubStepTitle notation="1A.">
-                        Scale to session or fixed lengths
-                      </SetupSubStepTitle>
+                      <SetupSubStepTitle notation="1A.">Length mode</SetupSubStepTitle>
                       <div className="mt-2 flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
                         <BigOption
-                          label="FIT"
-                          title="Scale"
-                          description="Divides session total"
-                          isActive={patternConstraint === "fitTotal"}
-                          onClick={() => setPatternConstraint("fitTotal")}
+                          label="CNT"
+                          title="Count-based"
+                          description="Use item counts and fixed times"
+                          isActive={patternConstraint === "cycle"}
+                          onClick={() => {
+                            setPatternConstraint("cycle");
+                            setPatternScaleStrategy("none");
+                          }}
                           borderBottom
                         />
                         <BigOption
-                          label="FIX"
-                          title="Fixed"
-                          description="Exact phase lengths"
-                          isActive={patternConstraint === "fixed"}
-                          onClick={() => setPatternConstraint("fixed")}
+                          label="LEN"
+                          title="Target length"
+                          description="Match a session total"
+                          isActive={patternConstraint === "fixedLength"}
+                          onClick={() => setPatternConstraint("fixedLength")}
                         />
                       </div>
                     </div>
 
+                    {patternConstraint === "fixedLength" ? (
+                      <div className="mt-8 flex flex-col gap-4 pt-6 sm:mt-10 sm:pt-8">
+                        <SetupSubStepTitle notation="1B.">Count input</SetupSubStepTitle>
+                        <div className="mt-2 flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
+                          <BigOption
+                            label="TOT"
+                            title="Total count"
+                            description="One total across all items"
+                            isActive={patternOccurrenceMode === "total"}
+                            onClick={() => setPatternOccurrenceMode("total")}
+                            borderBottom
+                          />
+                          <BigOption
+                            label="PER"
+                            title="Per-item count"
+                            description="Set count for each item"
+                            isActive={patternOccurrenceMode === "perItem"}
+                            onClick={() => setPatternOccurrenceMode("perItem")}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {patternConstraint === "fixedLength" ? (
+                      <div className="mt-8 flex flex-col gap-4 pt-6 sm:mt-10 sm:pt-8">
+                        <SetupSubStepTitle notation="1C.">Fit method</SetupSubStepTitle>
+                        <div className="mt-2 flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
+                          <BigOption
+                            label="RAW"
+                            title="Keep exact"
+                            description="Use entered times"
+                            isActive={patternScaleStrategy === "none"}
+                            onClick={() => setPatternScaleStrategy("none")}
+                            borderBottom
+                          />
+                          <BigOption
+                            label="SCL"
+                            title="Scale to target"
+                            description="Adjust times to target"
+                            isActive={patternScaleStrategy === "fitClosest"}
+                            onClick={() => setPatternScaleStrategy("fitClosest")}
+                            borderBottom
+                          />
+                          <BigOption
+                            label="REP"
+                            title="Repeat to target"
+                            description="Repeat list; show delta"
+                            isActive={patternScaleStrategy === "multiply"}
+                            onClick={() => setPatternScaleStrategy("multiply")}
+                          />
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div className="mt-8 flex flex-col gap-5 pt-6 sm:mt-10 sm:gap-6 sm:pt-8">
-                      <SetupSubStepTitle notation="1B.">
-                        Phase durations
+                      <SetupSubStepTitle notation="1D.">
+                        Items and times
                       </SetupSubStepTitle>
                       <PatternScheduleEditor
                         slots={patternSlots}
                         onSlotsChange={setPatternSlots}
+                        showDurations
+                        showOccurrences={
+                          patternConstraint === "cycle" ||
+                          patternOccurrenceMode === "perItem"
+                        }
+                        showScaleDeltas={
+                          scheduleMode === "pattern" &&
+                          patternConstraint === "fixedLength" &&
+                          schedulePreview.ok &&
+                          schedulePreview.strategyUsed === "fitClosest"
+                        }
+                        slotDeltaMs={
+                          schedulePreview.ok ? schedulePreview.slotDeltaMs : []
+                        }
                       />
                     </div>
                   </>
                 ) : null}
               </div>
 
-              <div className="flex w-full min-w-0 flex-col gap-4">
-                <SetupSubStepTitle notation={`${sessionChapterMark}.`}>
-                  Session
-                </SetupSubStepTitle>
-                <div className="flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
-                  {showSessionDuration && (
-                    <BigRow label="DUR" borderBottom>
-                      <HmsClock
-                        phaseLetter="Session"
-                        hours={Math.floor(minutes / 60)}
-                        minutes={minutes % 60}
-                        seconds={secondsPart}
-                        onSetHms={(h, m, s) => applySessionDuration(h * 60 + m, s)}
-                      />
-                    </BigRow>
-                  )}
-                  <BigRow label="RNG">
-                    <BigNumber
-                      label="Rings"
-                      value={rings}
-                      unitLabel="Rings"
-                      onChange={setRings}
-                    />
-                  </BigRow>
+              {showSessionSection ? (
+                <div className="flex w-full min-w-0 flex-col gap-4">
+                  <SetupSubStepTitle notation={`${sessionChapterMark}.`}>
+                    Session target
+                  </SetupSubStepTitle>
+                  <div className="flex w-full min-w-0 flex-col overflow-hidden rounded-md border border-ds-divider">
+                    {showSessionDuration && (
+                      <BigRow
+                        label="DUR"
+                        borderBottom={showSessionRings}
+                        rightAction={
+                          setupRemainderNotice ? (
+                            <span className="font-mono text-xs tabular-nums text-ds-soft">
+                              {setupRemainderNotice}
+                            </span>
+                          ) : undefined
+                        }
+                      >
+                        <HmsClock
+                          phaseLetter="Session"
+                          hours={Math.floor(minutes / 60)}
+                          minutes={minutes % 60}
+                          seconds={secondsPart}
+                          onSetHms={(h, m, s) => applySessionDuration(h * 60 + m, s)}
+                        />
+                      </BigRow>
+                    )}
+                    {showSessionRings && (
+                      <BigRow label="RNG">
+                        <BigNumber
+                          label="Rings"
+                          value={rings}
+                          unitLabel="Rings"
+                          onChange={setRings}
+                        />
+                      </BigRow>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
-              <div className="flex w-full min-w-0 flex-col gap-4">
-                <SetupSubStepTitle notation={`${spreadChapterMark}.`}>
-                  Spread
-                </SetupSubStepTitle>
-                <div className="mt-1 flex max-w-md flex-col gap-3 border-t border-ds-divider pt-6 lg:mx-0">
-                  <VariabilitySlider
-                    className="w-full"
-                    value={variabilityPct}
-                    onChange={setVariabilityPct}
-                    disabled={scheduleMode !== "random"}
-                  />
-                  <ControlButton
-                    type="button"
-                    variant="secondary"
-                    className="!min-h-12 w-full max-w-xs py-3.5 lg:mx-0"
-                    disabled={scheduleMode !== "random"}
-                    onClick={() => {
-                      primeAudioFromUserGesture();
-                      setShuffleNonce((n) => n + 1);
-                    }}
-                  >
-                    New shuffle
-                  </ControlButton>
-                  {scheduleMode !== "random" && (
-                    <p className="text-xs leading-snug text-ds-soft">
-                      Spread controls are enabled in Random mode.
-                    </p>
-                  )}
+              {showVariationSection ? (
+                <div className="flex w-full min-w-0 flex-col gap-4">
+                  <SetupSubStepTitle notation={`${spreadChapterMark}.`}>
+                    Variation
+                  </SetupSubStepTitle>
+                  <div className="mt-1 flex max-w-md flex-col gap-3 border-t border-ds-divider pt-6 lg:mx-0">
+                    <VariabilitySlider
+                      className="w-full"
+                      value={variabilityPct}
+                      onChange={setVariabilityPct}
+                    />
+                    <ControlButton
+                      type="button"
+                      variant="secondary"
+                      className="!min-h-12 w-full max-w-xs py-3.5 lg:mx-0"
+                      onClick={() => {
+                        primeAudioFromUserGesture();
+                        setShuffleNonce((n) => n + 1);
+                      }}
+                    >
+                      New shuffle
+                    </ControlButton>
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               {setupScheduleError && (
                 <p
@@ -1152,10 +1419,8 @@ export function IntervalTimer({ actionsRef, onActivityChange }: Props) {
             {actualSegments.map((ms, i) => (
               <li key={`${i}-${ms}`}>
                 Ring {i + 1}
-                {scheduleMode === "pattern" && patternSlots.length > 0
-                  ? ` · ${phaseLabelsForSchedule(actualSegments.length, patternSlots.length)[i] ?? ""}`
-                  : ""}
-                : {formatMmSs(ms)}
+                {completionPhaseLabels?.[i] ? ` · ${completionPhaseLabels[i]}` : ""}:{" "}
+                {formatMmSs(ms)}
               </li>
             ))}
           </ul>

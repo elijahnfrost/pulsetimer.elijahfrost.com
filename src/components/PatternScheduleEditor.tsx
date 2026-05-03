@@ -1,6 +1,10 @@
 "use client";
 
-import { MAX_PATTERN_PHASES } from "@/lib/buildIntervalSchedule";
+import {
+  MAX_PATTERN_PHASES,
+  MAX_PHASE_OCCURRENCES,
+  normalizeOccurrenceCount,
+} from "@/lib/buildIntervalSchedule";
 import {
   normalizeHmsParts,
   splitTotalSecToHms,
@@ -10,18 +14,27 @@ import { HmsClock } from "./BigEditors";
 
 import { controlButtonClasses } from "./Controls";
 import { BigRow } from "./BigRow";
+import { NumberInput } from "./NumberInput";
+import { pad2 } from "@/lib/formatTime";
 
-export type PatternConstraint = "fitTotal" | "fixed";
+export type PatternConstraint = "cycle" | "fixedLength";
+export type PatternOccurrenceMode = "total" | "perItem";
+export type PatternScaleStrategy = "none" | "fitClosest" | "multiply";
 
 export type PatternPhasePersist = {
   hours: number;
   minutes: number;
   secondsPart: number;
+  occurrences: number;
 };
 
 type Props = {
   slots: PatternPhasePersist[];
   onSlotsChange: (next: PatternPhasePersist[]) => void;
+  showDurations?: boolean;
+  showOccurrences?: boolean;
+  slotDeltaMs?: number[];
+  showScaleDeltas?: boolean;
 };
 
 const LETTERS = ["A", "B", "C", "D", "E", "F"] as const;
@@ -97,17 +110,48 @@ const PlusIcon = ({ className }: { className?: string }) => (
 const phaseIconActionClass =
   "inline-flex items-center justify-center rounded-md border-0 bg-transparent text-ds-muted transition-[color,background-color,opacity] duration-ds ease-ds-out hover:bg-ds-section/24 hover:text-ds-fg focus-visible:outline-none disabled:pointer-events-none active:opacity-95";
 
-export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
-  const applyPhaseTotalSec = (idx: number, totalSecRaw: number) => {
-    const nextSlot = splitTotalSecToHms(totalSecRaw);
+function formatSignedDeltaMs(msRaw: number): string {
+  const ms = Math.round(msRaw);
+  if (ms === 0) return "±00:00";
+  const sign = ms > 0 ? "+" : "−";
+  const absSec = Math.floor(Math.abs(ms) / 1000);
+  const mm = Math.floor(absSec / 60);
+  const ss = absSec % 60;
+  return `${sign}${pad2(mm)}:${pad2(ss)}`;
+}
+
+export function PatternScheduleEditor({
+  slots,
+  onSlotsChange,
+  showDurations = true,
+  showOccurrences = true,
+  slotDeltaMs,
+  showScaleDeltas = false,
+}: Props) {
+  const updateSlot = (idx: number, next: PatternPhasePersist) => {
     const copy = slots.slice();
-    copy[idx] = nextSlot;
+    copy[idx] = next;
     onSlotsChange(copy);
+  };
+
+  const applyPhaseTotalSec = (idx: number, totalSecRaw: number) => {
+    const nextDur = splitTotalSecToHms(totalSecRaw);
+    updateSlot(idx, { ...slots[idx]!, ...nextDur });
+  };
+
+  const applyOccurrences = (idx: number, raw: number) => {
+    updateSlot(idx, {
+      ...slots[idx]!,
+      occurrences: normalizeOccurrenceCount(raw),
+    });
   };
 
   const addPhase = () => {
     if (slots.length >= MAX_PATTERN_PHASES) return;
-    const next: PatternPhasePersist[] = [...slots, normalizeHmsParts(0, 1, 0)];
+    const next: PatternPhasePersist[] = [
+      ...slots,
+      { ...normalizeHmsParts(0, 1, 0), occurrences: 1 },
+    ];
     onSlotsChange(next);
   };
 
@@ -132,6 +176,8 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
       {slots.map((slot, idx) => {
         const letter = LETTERS[idx] ?? String(idx + 1);
         const canReorder = slots.length > 1;
+        const slotDelta = slotDeltaMs?.[idx] ?? 0;
+        const showSlotDelta = showScaleDeltas && Math.abs(slotDelta) >= 1000;
         const isLastSlotRow = idx === slots.length - 1;
         const hasAddRow = slots.length < MAX_PATTERN_PHASES;
         const dividerBelow = !(isLastSlotRow && !hasAddRow);
@@ -143,6 +189,11 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
               borderBottom={dividerBelow}
               rightAction={
                 <>
+                  {showSlotDelta ? (
+                    <span className="font-mono text-xs tabular-nums text-ds-soft">
+                      {formatSignedDeltaMs(slotDelta)}
+                    </span>
+                  ) : null}
                   {canReorder ? (
                     <div className="flex flex-col items-center justify-center gap-0.5">
                       <button
@@ -178,13 +229,37 @@ export function PatternScheduleEditor({ slots, onSlotsChange }: Props) {
                 </>
               }
             >
-              <HmsClock
-                phaseLetter={letter}
-                hours={slot.hours}
-                minutes={slot.minutes}
-                seconds={slot.secondsPart}
-                onSetHms={(h, m, s) => applyPhaseTotalSec(idx, totalSecFromHms(h, m, s))}
-              />
+              <div className="flex w-full min-w-0 flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+                {showDurations ? (
+                  <div className="min-w-0 flex-1">
+                    <HmsClock
+                      phaseLetter={letter}
+                      hours={slot.hours}
+                      minutes={slot.minutes}
+                      seconds={slot.secondsPart}
+                      onSetHms={(h, m, s) =>
+                        applyPhaseTotalSec(idx, totalSecFromHms(h, m, s))
+                      }
+                    />
+                  </div>
+                ) : null}
+
+                {showOccurrences ? (
+                  <div className="w-full sm:w-[11.25rem]">
+                    <NumberInput
+                      label="Count"
+                      value={normalizeOccurrenceCount(slot.occurrences)}
+                      min={0}
+                      max={MAX_PHASE_OCCURRENCES}
+                      strictClamp
+                      onChange={(n) => applyOccurrences(idx, n)}
+                      layout="compact"
+                      density="dense"
+                      stretchCompact
+                    />
+                  </div>
+                ) : null}
+              </div>
             </BigRow>
           </div>
         );

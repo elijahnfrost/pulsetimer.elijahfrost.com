@@ -2,6 +2,7 @@
 export const MIN_INTERVAL_MS = 5000;
 
 export const MAX_PATTERN_PHASES = 6;
+export const MAX_PHASE_OCCURRENCES = 500;
 
 export type BuildScheduleResult =
   | { ok: true; intervalsMs: number[] }
@@ -209,6 +210,177 @@ export function buildPatternScheduleFixed(
     intervalsMs.push(ms);
   }
   return { ok: true, intervalsMs };
+}
+
+export type PhaseSequenceResult =
+  | { ok: true; phaseIndices: number[] }
+  | { ok: false; error: string };
+
+export function normalizeOccurrenceCount(raw: number): number {
+  if (!Number.isFinite(raw)) return 0;
+  return Math.max(0, Math.min(MAX_PHASE_OCCURRENCES, Math.floor(raw)));
+}
+
+/**
+ * Build an A→B→C style sequence that honors explicit per-phase occurrence counts.
+ * Example counts [2,1,3] => A,B,C,A,C,C
+ */
+export function buildPhaseIndexSequenceFromOccurrences(
+  occurrences: number[]
+): PhaseSequenceResult {
+  const k = occurrences.length;
+  if (k < 1) {
+    return { ok: false, error: "Add at least one phase." };
+  }
+  if (k > MAX_PATTERN_PHASES) {
+    return { ok: false, error: "Too many phases." };
+  }
+
+  const remain = occurrences.map(normalizeOccurrenceCount);
+  const total = sum(remain);
+  if (total < 1) {
+    return { ok: false, error: "Set at least one phase occurrence." };
+  }
+
+  const phaseIndices: number[] = [];
+  let guard = 0;
+  while (phaseIndices.length < total && guard < total * Math.max(2, k + 1)) {
+    for (let i = 0; i < k; i++) {
+      if (remain[i]! > 0) {
+        phaseIndices.push(i);
+        remain[i] = remain[i]! - 1;
+      }
+    }
+    guard++;
+  }
+
+  if (phaseIndices.length !== total) {
+    return { ok: false, error: "Could not build occurrence sequence." };
+  }
+  return { ok: true, phaseIndices };
+}
+
+/** Build fixed intervals from explicit phase indices and phase lengths. */
+export function buildPatternScheduleFromPhaseIndices(
+  phaseIndices: number[],
+  lengthsMs: number[]
+): BuildScheduleResult {
+  const minMs = MIN_INTERVAL_MS;
+  if (phaseIndices.length < 1) {
+    return { ok: false, error: "Need at least one ring." };
+  }
+  const k = lengthsMs.length;
+  if (k < 1) {
+    return { ok: false, error: "Add at least one phase with a duration." };
+  }
+  if (k > MAX_PATTERN_PHASES) {
+    return { ok: false, error: "Too many phases." };
+  }
+
+  const intervalsMs: number[] = [];
+  for (let i = 0; i < phaseIndices.length; i++) {
+    const phaseIdx = phaseIndices[i];
+    if (!Number.isFinite(phaseIdx) || phaseIdx == null || phaseIdx < 0 || phaseIdx >= k) {
+      return { ok: false, error: "Invalid phase sequence." };
+    }
+    const ms = Math.round(lengthsMs[phaseIdx]!);
+    if (!Number.isFinite(ms) || ms < minMs) {
+      return {
+        ok: false,
+        error: `Each ring must be at least 5 seconds (phase ${String.fromCharCode(65 + phaseIdx)}).`,
+      };
+    }
+    intervalsMs.push(ms);
+  }
+
+  return { ok: true, intervalsMs };
+}
+
+export function phaseLabelsFromIndices(phaseIndices: number[]): string[] {
+  return phaseIndices.map((idx) => String.fromCharCode(65 + Math.max(0, idx)));
+}
+
+/** Scale a fixed list of intervals to a target duration while respecting minimum ring length. */
+export function fitIntervalsToTargetTotal(
+  totalDurationMs: number,
+  intervalsMs: number[]
+): BuildScheduleResult {
+  const minMs = MIN_INTERVAL_MS;
+  if (!Number.isFinite(totalDurationMs) || totalDurationMs <= 0) {
+    return { ok: false, error: "Total duration must be positive." };
+  }
+  const n = intervalsMs.length;
+  if (n < 1) {
+    return { ok: false, error: "Need at least one ring." };
+  }
+  if (intervalsMs.some((ms) => !Number.isFinite(ms) || ms <= 0)) {
+    return { ok: false, error: "Each ring needs a positive duration." };
+  }
+  if (n * minMs > totalDurationMs + 1e-6) {
+    return {
+      ok: false,
+      error: `Total time is too short for ${n} rings (each needs at least 5 seconds).`,
+    };
+  }
+
+  const sourceTotal = sum(intervalsMs);
+  if (sourceTotal <= 0) {
+    return { ok: false, error: "Invalid source intervals." };
+  }
+
+  const normalized = intervalsMs.map((x) => (totalDurationMs * x) / sourceTotal);
+  const result = enforceMinTotal(normalized, totalDurationMs, minMs);
+  if (!result) {
+    return {
+      ok: false,
+      error: "Could not build a schedule. Try fewer rings or longer duration.",
+    };
+  }
+  return { ok: true, intervalsMs: result };
+}
+
+export type MultiplyToTargetResult =
+  | { ok: true; intervalsMs: number[]; remainderMs: number; repeats: number }
+  | { ok: false; error: string };
+
+/**
+ * Repeats a base item list to get close to the target duration without scaling item durations.
+ * `remainderMs > 0` means time left over, `< 0` means overage.
+ */
+export function multiplyIntervalsToTarget(
+  totalDurationMs: number,
+  baseIntervalsMs: number[]
+): MultiplyToTargetResult {
+  if (!Number.isFinite(totalDurationMs) || totalDurationMs <= 0) {
+    return { ok: false, error: "Total duration must be positive." };
+  }
+  if (baseIntervalsMs.length < 1) {
+    return { ok: false, error: "Need at least one ring." };
+  }
+  if (baseIntervalsMs.some((ms) => !Number.isFinite(ms) || ms < MIN_INTERVAL_MS)) {
+    return {
+      ok: false,
+      error: "Each ring must be at least 5 seconds.",
+    };
+  }
+
+  const baseTotal = sum(baseIntervalsMs);
+  if (baseTotal <= 0) {
+    return { ok: false, error: "Invalid base schedule." };
+  }
+
+  const repeats = Math.max(1, Math.round(totalDurationMs / baseTotal));
+  const intervalsMs: number[] = [];
+  for (let i = 0; i < repeats; i++) {
+    intervalsMs.push(...baseIntervalsMs);
+  }
+  const builtTotal = sum(intervalsMs);
+  return {
+    ok: true,
+    intervalsMs,
+    remainderMs: totalDurationMs - builtTotal,
+    repeats,
+  };
 }
 
 /** Label for ring index i when cycling k phases A… */
